@@ -783,7 +783,10 @@
 <body>
   <div id="root"></div>
   <script>
-    const API_PREFIX = "http://10.0.0.108:8510/audit/";
+    const pageUrl = window.location.href.toLowerCase();
+    const API_PREFIX = pageUrl.includes("10.0.0") || pageUrl.includes("laptop-dell")
+      ? "http://10.0.0.108:8510/audit/"
+      : "http://127.0.0.1:8510/audit/";
 
     const audit = {
       httpStatus: 200,
