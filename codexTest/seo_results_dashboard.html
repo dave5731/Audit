@@ -1,0 +1,1321 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEO Audit Dashboard</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #667085;
+      --line: #dde3ea;
+      --paper: #ffffff;
+      --page: #f5f7fa;
+      --good: #0f8b6f;
+      --warn: #b56a00;
+      --bad: #b42318;
+      --teal: #0f766e;
+      --blue: #2563eb;
+      --rose: #be3455;
+      --amber: #c47a00;
+      --violet: #6d4aff;
+      --accent: #0b2545;
+      --accent-soft: #cfe0f5;
+      --accent-glow: rgba(11, 37, 69, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .shell {
+      min-height: 100vh;
+    }
+
+    .top-band {
+      background: #106068;
+      border-bottom: 5px solid var(--accent);
+      color: #fff;
+      padding: 30px 24px 84px;
+    }
+
+    .top-inner,
+    .content {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.85rem, 3vw, 3.1rem);
+      line-height: 1.08;
+      font-weight: 780;
+    }
+
+    .target {
+      margin-top: 12px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.98rem;
+      overflow-wrap: anywhere;
+    }
+
+    .audit-form {
+      display: flex;
+      gap: 10px;
+      width: min(820px, 100%);
+      margin: 42px auto 0;
+      justify-content: center;
+    }
+
+    .audit-input {
+      min-width: 0;
+      flex: 1;
+      height: 54px;
+      border: 1px solid rgba(255, 255, 255, 0.38);
+      border-radius: 8px;
+      padding: 0 16px;
+      background: rgba(255, 255, 255, 0.96);
+      color: var(--ink);
+      font: inherit;
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.18), 0 10px 28px rgba(2, 73, 133, 0.22);
+    }
+
+    .audit-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow), 0 12px 34px rgba(2, 73, 133, 0.28);
+    }
+
+    .audit-button {
+      height: 54px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 18px;
+      background: #111827;
+      color: #fff;
+      font: inherit;
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .audit-button:focus {
+      outline: 3px solid rgba(255, 255, 255, 0.36);
+      outline-offset: 2px;
+    }
+
+    .empty-state {
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 12px 32px rgba(21, 34, 50, 0.08);
+      color: var(--muted);
+      padding: 28px;
+    }
+
+    .empty-content {
+      max-width: 760px;
+    }
+
+    .empty-title {
+      color: var(--ink);
+      font-size: 1.35rem;
+      line-height: 1.25;
+      font-weight: 400;
+    }
+
+    .empty-list {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0 0;
+      padding-left: 20px;
+      line-height: 1.48;
+      font-weight: 400;
+    }
+
+    .scheduler-panel {
+      margin-bottom: 14px;
+      padding: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--accent);
+      border-radius: 8px;
+      box-shadow: 0 12px 32px rgba(21, 34, 50, 0.08);
+    }
+
+    .scheduler-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .scheduler-title {
+      margin: 0;
+      font-size: 1.16rem;
+      line-height: 1.28;
+      font-weight: 800;
+    }
+
+    .scheduler-copy {
+      margin-top: 5px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .scheduler-close {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f7f9fb;
+      color: var(--ink);
+      width: 34px;
+      height: 34px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .zoom-picker {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+      gap: 18px;
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .calendar-pane,
+    .time-pane {
+      padding: 16px;
+    }
+
+    .time-pane {
+      border-left: 1px solid var(--line);
+      background: #f8fafc;
+    }
+
+    .month-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .month-button {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      background: #fff;
+      color: #344054;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .month-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+    }
+
+    .weekday-grid,
+    .date-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .weekday {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .date-button {
+      aspect-ratio: 1;
+      min-width: 0;
+      border: 1px solid transparent;
+      border-radius: 50%;
+      background: transparent;
+      color: #344054;
+      font: inherit;
+      font-weight: 720;
+      cursor: pointer;
+    }
+
+    .date-button:hover {
+      background: #eef6ff;
+      color: #024985;
+    }
+
+    .date-button.is-muted {
+      color: #c4ccd6;
+      cursor: default;
+    }
+
+    .date-button.is-active {
+      background: #0b5cff;
+      color: #fff;
+      box-shadow: 0 6px 14px rgba(11, 92, 255, 0.28);
+    }
+
+    .time-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    .timezone {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .time-slots {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .time-slot {
+      height: 40px;
+      border: 1px solid #c9ddff;
+      border-radius: 8px;
+      background: #fff;
+      color: #0b5cff;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .time-slot:hover {
+      background: #eef6ff;
+    }
+
+    .time-slot.is-active {
+      background: #0b5cff;
+      color: #fff;
+      border-color: #0b5cff;
+    }
+
+    .length-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 760;
+    }
+
+    .length-select {
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 10px;
+      font: inherit;
+    }
+
+    .scheduler-selection {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #eef6ff;
+      color: #344054;
+      font-weight: 700;
+    }
+
+    .score-card {
+      min-width: 206px;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(12px);
+      border-radius: 8px;
+    }
+
+    .top-side {
+      display: grid;
+      gap: 12px;
+      min-width: 270px;
+      max-width: 330px;
+    }
+
+    .top-offer {
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(12px);
+      border-radius: 8px;
+    }
+
+    .top-offer-label {
+      color: var(--accent-soft);
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .top-offer-title {
+      margin-top: 5px;
+      font-size: 1rem;
+      line-height: 1.28;
+      font-weight: 800;
+    }
+
+    .top-offer-copy {
+      margin-top: 7px;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+
+    .top-offer-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      margin-top: 12px;
+      padding: 0 14px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 800;
+    }
+
+    .top-offer-button:focus {
+      outline: 3px solid rgba(255, 255, 255, 0.36);
+      outline-offset: 2px;
+    }
+
+    .score-label {
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      font-weight: 720;
+    }
+
+    .score-value {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .score-number {
+      font-size: 2.4rem;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .score-total {
+      color: rgba(255, 255, 255, 0.74);
+      font-weight: 700;
+    }
+
+    .content {
+      margin-top: -52px;
+      padding-bottom: 40px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      box-shadow: 0 12px 32px rgba(21, 34, 50, 0.08);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      font-weight: 760;
+    }
+
+    .metric-value {
+      margin-top: 7px;
+      font-size: 1.42rem;
+      font-weight: 780;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      position: relative;
+      min-height: 142px;
+      padding: 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 12px 32px rgba(21, 34, 50, 0.08);
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      background: #98a2b3;
+      transition: background 220ms ease;
+    }
+
+    .card.pass::before {
+      background: var(--good);
+    }
+
+    .card.fail::before,
+    .card.warn::before {
+      background: var(--bad);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.25;
+      font-weight: 780;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 0.73rem;
+      font-weight: 780;
+      text-transform: uppercase;
+    }
+
+    .badge.waiting {
+      color: #635106;
+      background: #fff2bd;
+    }
+
+    .badge.pass {
+      color: #05603a;
+      background: #d9f7ea;
+    }
+
+    .badge.fail {
+      color: #912018;
+      background: #ffe1dd;
+    }
+
+    .badge.warn {
+      color: #8a4b00;
+      background: #ffebc7;
+    }
+
+    .card-body {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 0.94rem;
+      line-height: 1.48;
+    }
+
+    .result-line {
+      color: var(--ink);
+      font-size: 1.12rem;
+      font-weight: 760;
+    }
+
+    .detail {
+      margin-top: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .loader {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .spinner {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 4px solid #e8edf2;
+      border-top-color: #98a2b3;
+      animation: spin 0.9s linear infinite;
+    }
+
+    .pulse-lines {
+      flex: 1;
+      display: grid;
+      gap: 7px;
+    }
+
+    .pulse-line {
+      height: 9px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #edf1f5, #dfe7ef, #edf1f5);
+      background-size: 180% 100%;
+      animation: sweep 1.2s ease-in-out infinite;
+    }
+
+    .pulse-line.short {
+      width: 62%;
+    }
+
+    .image-list {
+      grid-column: span 3;
+      min-height: 220px;
+    }
+
+    .links {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .links li {
+      padding: 9px 10px;
+      background: #f7f9fb;
+      border: 1px solid #e4e9ef;
+      border-radius: 6px;
+      color: #344054;
+      font-size: 0.9rem;
+      overflow-wrap: anywhere;
+    }
+
+    .audit-offer {
+      margin-top: 14px;
+      padding: 22px;
+      background: #024985;
+      color: #fff;
+      border-radius: 8px;
+      border: 1px solid rgba(2, 73, 133, 0.28);
+      box-shadow: 0 14px 36px rgba(21, 34, 50, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+    }
+
+    .offer-eyebrow {
+      color: var(--accent-soft);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .offer-title {
+      margin-top: 6px;
+      font-size: 1.35rem;
+      line-height: 1.22;
+      font-weight: 800;
+    }
+
+    .offer-copy {
+      max-width: 720px;
+      margin-top: 8px;
+      color: rgba(255, 255, 255, 0.82);
+      line-height: 1.48;
+    }
+
+    .offer-button {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .offer-button:focus {
+      outline: 3px solid rgba(255, 255, 255, 0.38);
+      outline-offset: 2px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes sweep {
+      0% {
+        background-position: 180% 0;
+      }
+
+      100% {
+        background-position: -180% 0;
+      }
+    }
+
+    @media (max-width: 920px) {
+      .title-row {
+        display: block;
+      }
+
+      .score-card {
+        margin-top: 22px;
+        width: 100%;
+      }
+
+      .top-side {
+        max-width: none;
+        margin-top: 22px;
+      }
+
+      .score-card {
+        margin-top: 0;
+      }
+
+      .summary-grid,
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .zoom-picker {
+        grid-template-columns: 1fr;
+      }
+
+      .time-pane {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .image-list {
+        grid-column: span 2;
+      }
+
+      .audit-offer {
+        display: block;
+      }
+
+      .offer-button {
+        width: 100%;
+        margin-top: 18px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .top-band {
+        padding: 24px 16px 76px;
+      }
+
+      .audit-form {
+        display: grid;
+      }
+
+      .audit-button {
+        width: 100%;
+      }
+
+      .summary-grid,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .image-list {
+        grid-column: span 1;
+      }
+
+      .scheduler-head {
+        display: block;
+      }
+
+      .scheduler-close {
+        margin-top: 12px;
+      }
+
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script>
+    const API_PREFIX = "http://10.0.0.108:8510/audit/";
+
+    const audit = {
+      httpStatus: 200,
+      wordCount: 1212,
+      renderedContentLevel: "Low",
+      imagesMissingAlt: [
+        "https://nauticalagency.com/wp-content/uploads/2022/04/nautical-agency-log-v3.png",
+        "https://nauticalagency.com/wp-content/uploads/2022/05/thought-leadership3.png",
+        "https://nauticalagency.com/wp-content/uploads/2022/05/thought-leadership5.jpg",
+        "https://nauticalagency.com/wp-content/uploads/2025/11/mark2.png",
+        "https://nauticalagency.com/wp-content/uploads/2022/04/nautical-agency-log-v4.png"
+      ],
+      checks: [
+        { id: "title", label: "Title Tag", status: "pass", result: "Present", detail: "Page title was found.", accent: "#0f766e", delay: 450 },
+        { id: "description", label: "Description", status: "pass", result: "Present", detail: "Description signal was found.", accent: "#2563eb", delay: 720 },
+        { id: "canonical", label: "Canonical URL", status: "pass", result: "Present", detail: "Canonical URL was found.", accent: "#6d4aff", delay: 980 },
+        { id: "h1", label: "H1 Tag", status: "fail", result: "Missing", detail: "No H1 tag was found on the page.", accent: "#b42318", delay: 1250 },
+        { id: "metaDescription", label: "Meta Description", status: "fail", result: "Missing", detail: "No meta description tag was found on the page.", accent: "#b42318", delay: 1510 },
+        { id: "noindex", label: "Noindex", status: "pass", result: "Not set", detail: "No noindex directive was found.", accent: "#0f766e", delay: 1790 },
+        { id: "ssl", label: "SSL", status: "pass", result: "Enabled", detail: "HTTPS endpoint is reachable.", accent: "#2563eb", delay: 2070 },
+        { id: "redirect", label: "HTTP to HTTPS", status: "fail", result: "Redirect failed", detail: "The HTTP URL did not correctly resolve to the HTTPS version of the site.", accent: "#b42318", delay: 2350 },
+        { id: "sitemap", label: "Sitemap", status: "pass", result: "Found", detail: "https://www.nauticalagency.com/sitemap_index.xml", accent: "#c47a00", delay: 2620 },
+        { id: "tagManager", label: "Google Tag Manager", status: "pass", result: "Detected", detail: "A Google Tag Manager container pattern was found in the fetched page source.", accent: "#2563eb", delay: 2920 },
+        { id: "renderedContent", label: "Rendered Content", status: "pass", result: "Low rendered content", detail: "A low level passes this test. Medium to high rendered content fails because the page may be heavier for crawlers and users.", accent: "#0f8b6f", delay: 3210 },
+        { id: "words", label: "Displayed Words", status: "pass", result: "1,212 words", detail: "Visible text count after skipping hidden/script/style text.", accent: "#6d4aff", delay: 3500 },
+        { id: "images", label: "Images Missing Alt", status: "warn", result: "5 images", detail: "Images without usable alt text are listed below.", accent: "#c47a00", delay: 3790, list: true }
+      ]
+    };
+
+    function initialUrlFromQuery() {
+      const value = new URLSearchParams(window.location.search).get("url") || "";
+      return value.trim();
+    }
+
+    function normalizeDisplayUrl(value) {
+      const trimmed = value.trim();
+      if (!trimmed) return "";
+      return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    }
+
+    function boolStatus(value) {
+      return value ? "pass" : "fail";
+    }
+
+    function presentText(value) {
+      return value ? "Present" : "Missing";
+    }
+
+    function buildAuditFromResponse(result) {
+      const missingImages = result.images_missing_alt || [];
+      const rendered = result.rendered_content || { level: "low", passes: true, element_count: 0 };
+      const renderedLabel = rendered.level ? rendered.level[0].toUpperCase() + rendered.level.slice(1) : "Low";
+
+      return {
+        httpStatus: result.status_code || "n/a",
+        wordCount: result.visible_word_count || 0,
+        renderedContentLevel: renderedLabel,
+        imagesMissingAlt: missingImages,
+        checks: [
+          { id: "title", label: "Title Tag", status: boolStatus(result.checks?.title), result: presentText(result.checks?.title), detail: result.values?.title || "No page title was found.", delay: 450 },
+          { id: "description", label: "Description", status: boolStatus(result.checks?.description), result: presentText(result.checks?.description), detail: result.values?.description || "No description signal was found.", delay: 720 },
+          { id: "canonical", label: "Canonical URL", status: boolStatus(result.checks?.canonical_url), result: presentText(result.checks?.canonical_url), detail: result.values?.canonical_url || "No canonical URL was found.", delay: 980 },
+          { id: "h1", label: "H1 Tag", status: boolStatus(result.checks?.h1_tag), result: presentText(result.checks?.h1_tag), detail: result.values?.h1_tags?.join(", ") || "No H1 tag was found on the page.", delay: 1250 },
+          { id: "metaDescription", label: "Meta Description", status: boolStatus(result.checks?.meta_description_tag), result: presentText(result.checks?.meta_description_tag), detail: result.values?.meta_description || "No meta description tag was found on the page.", delay: 1510 },
+          { id: "noindex", label: "Noindex", status: result.noindex?.is_noindex ? "fail" : "pass", result: result.noindex?.is_noindex ? "Noindex found" : "Not set", detail: result.noindex?.sources?.map((source) => `${source.source}: ${source.directive}`).join(", ") || "No noindex directive was found.", delay: 1790 },
+          { id: "ssl", label: "SSL", status: boolStatus(result.ssl?.has_ssl), result: result.ssl?.has_ssl ? "Enabled" : "Not available", detail: result.ssl?.final_url || result.ssl?.error || "HTTPS endpoint check completed.", delay: 2070 },
+          { id: "redirect", label: "HTTP to HTTPS", status: boolStatus(result.http_to_https_redirect?.redirects_to_https), result: result.http_to_https_redirect?.redirects_to_https ? "Redirects correctly" : "Redirect failed", detail: result.http_to_https_redirect?.final_url || "The HTTP URL did not correctly resolve to the HTTPS version of the site.", delay: 2350 },
+          { id: "sitemap", label: "Sitemap", status: boolStatus(result.sitemap?.exists), result: result.sitemap?.exists ? "Found" : "Not found", detail: result.sitemap?.url || "No sitemap was found.", delay: 2620 },
+          { id: "tagManager", label: "Google Tag Manager", status: boolStatus(result.google_tag_manager_present), result: result.google_tag_manager_present ? "Detected" : "Not detected", detail: result.google_tag_manager_present ? "A Google Tag Manager container pattern was found." : "No Google Tag Manager pattern was found.", delay: 2920 },
+          { id: "renderedContent", label: "Rendered Content", status: rendered.passes ? "pass" : "fail", result: `${renderedLabel} rendered content`, detail: `${rendered.element_count || 0} rendered elements counted. Low passes; medium to high fails.`, delay: 3210 },
+          { id: "words", label: "Displayed Words", status: "pass", result: `${(result.visible_word_count || 0).toLocaleString()} words`, detail: "Visible text count after skipping hidden/script/style text.", delay: 3500 },
+          { id: "images", label: "Images Missing Alt", status: missingImages.length ? "warn" : "pass", result: `${missingImages.length} images`, detail: missingImages.length ? "Images without usable alt text are listed below." : "No images missing alt text were found.", delay: 3790, list: true, listItems: missingImages }
+        ]
+      };
+    }
+
+    function statusText(status) {
+      if (status === "pass") return "Pass";
+      if (status === "fail") return "Needs Work";
+      if (status === "warn") return "Review";
+      return "Checking";
+    }
+
+    function App() {
+      const initialUrl = normalizeDisplayUrl(initialUrlFromQuery());
+      const [inputUrl, setInputUrl] = React.useState(initialUrl);
+      const [submittedUrl, setSubmittedUrl] = React.useState("");
+      const [activeAudit, setActiveAudit] = React.useState(audit);
+      const [completed, setCompleted] = React.useState({});
+      const [auditLoading, setAuditLoading] = React.useState(false);
+      const [auditError, setAuditError] = React.useState("");
+      const [auditReady, setAuditReady] = React.useState(false);
+      const [schedulerOpen, setSchedulerOpen] = React.useState(false);
+      const [schedulerPlacement, setSchedulerPlacement] = React.useState("top");
+      const [meetingDate, setMeetingDate] = React.useState("");
+      const [meetingTime, setMeetingTime] = React.useState("");
+      const [meetingLength, setMeetingLength] = React.useState("30 minutes");
+      const schedulerRef = React.useRef(null);
+
+      React.useEffect(() => {
+        setCompleted({});
+        if (!submittedUrl || !auditReady) return undefined;
+        const timers = activeAudit.checks.map((check) =>
+          window.setTimeout(() => {
+            setCompleted((current) => ({ ...current, [check.id]: true }));
+          }, check.delay)
+        );
+        return () => timers.forEach(window.clearTimeout);
+      }, [submittedUrl, activeAudit, auditReady]);
+
+      const completedChecks = activeAudit.checks.filter((check) => completed[check.id]);
+      const passCount = completedChecks.filter((check) => check.status === "pass").length;
+      const totalComplete = completedChecks.length;
+      const targetLabel = submittedUrl || "Find the SEO issues limiting visibility, rankings, and local discovery.";
+
+      async function submitUrl(event) {
+        event.preventDefault();
+        const normalized = normalizeDisplayUrl(inputUrl);
+        if (!normalized) return;
+        setSubmittedUrl(normalized);
+        setAuditLoading(true);
+        setAuditError("");
+        setAuditReady(false);
+        setCompleted({});
+        window.history.replaceState(null, "", `?url=${encodeURIComponent(normalized)}`);
+
+        try {
+          const body = new FormData();
+          body.append("siteUrl", normalized);
+          const response = await fetch(`${API_PREFIX}pageSEOChecker?timeout=30`, {
+            method: "POST",
+            body
+          });
+          const result = await response.json();
+          if (!response.ok || result.success === false) {
+            throw new Error(result.error || `Audit request failed with HTTP ${response.status}`);
+          }
+          setActiveAudit(buildAuditFromResponse(result));
+          setAuditReady(true);
+        } catch (error) {
+          setAuditError(error.message || "Unable to run audit.");
+          setAuditReady(false);
+        } finally {
+          setAuditLoading(false);
+        }
+      }
+
+      function openScheduler(event, placement = "top") {
+        event.preventDefault();
+        if (schedulerOpen && schedulerPlacement === placement) {
+          setSchedulerOpen(false);
+          return;
+        }
+        setSchedulerPlacement(placement);
+        setSchedulerOpen(true);
+      }
+
+      React.useEffect(() => {
+        if (!schedulerOpen || schedulerPlacement !== "bottom") return;
+        window.setTimeout(() => {
+          schedulerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 0);
+      }, [schedulerOpen, schedulerPlacement]);
+
+      function renderScheduler() {
+        return React.createElement(MeetingScheduler, {
+          meetingDate,
+          meetingTime,
+          meetingLength,
+          setMeetingDate,
+          setMeetingTime,
+          setMeetingLength,
+          onClose: () => setSchedulerOpen(false),
+          panelRef: schedulerRef
+        });
+      }
+
+      return React.createElement(
+        "main",
+        { className: "shell" },
+        React.createElement(
+          "section",
+          { className: "top-band" },
+          React.createElement(
+            "div",
+            { className: "top-inner" },
+            React.createElement(
+              "div",
+              { className: "title-row" },
+              React.createElement(
+                "div",
+                null,
+                React.createElement("h1", null, "SEO Audit Dashboard"),
+                React.createElement("div", { className: "target" }, targetLabel)
+              ),
+              React.createElement(
+                "div",
+                { className: "top-side" },
+                auditReady
+                  ? React.createElement(
+                    "div",
+                    { className: "top-offer" },
+                    React.createElement("div", { className: "top-offer-label" }, "Detailed audit"),
+                    React.createElement("div", { className: "top-offer-title" }, "Schedule a deeper SEO and GEO review"),
+                    React.createElement("div", { className: "top-offer-copy" }, "Review 100+ parameters and get a prioritized action plan."),
+                    React.createElement("a", { className: "top-offer-button", href: "#", role: "button", onClick: (event) => openScheduler(event, "top") }, "Schedule Audit")
+                  )
+                  : null,
+                React.createElement(
+                  "div",
+                  { className: "score-card" },
+                  React.createElement("div", { className: "score-label" }, "Completed checks"),
+                  React.createElement(
+                    "div",
+                    { className: "score-value" },
+                    React.createElement("span", { className: "score-number" }, totalComplete),
+                    React.createElement("span", { className: "score-total" }, `/ ${activeAudit.checks.length}`)
+                  )
+                )
+              )
+            ),
+            React.createElement(
+              "form",
+              { className: "audit-form", onSubmit: submitUrl },
+              React.createElement("input", {
+                className: "audit-input",
+                value: inputUrl,
+                onChange: (event) => setInputUrl(event.target.value),
+                placeholder: "https://example.com",
+                "aria-label": "Audit URL",
+                autoFocus: true
+              }),
+              React.createElement("button", { className: "audit-button", type: "submit", disabled: auditLoading }, auditLoading ? "Running..." : "Run Audit")
+            )
+          )
+        ),
+        React.createElement(
+          "section",
+          { className: "content" },
+          auditLoading
+            ? React.createElement("div", { className: "scheduler-panel" }, "Running the SEO audit...")
+            : null,
+          auditError
+            ? React.createElement("div", { className: "scheduler-panel" }, `Audit error: ${auditError}`)
+            : null,
+          schedulerOpen && schedulerPlacement === "top" ? renderScheduler() : null,
+          auditReady
+            ? React.createElement(
+              React.Fragment,
+              null,
+              React.createElement(
+                "div",
+                { className: "summary-grid" },
+                React.createElement(Metric, { label: "HTTP Status", value: activeAudit.httpStatus }),
+                React.createElement(Metric, { label: "Passed", value: passCount }),
+                React.createElement(Metric, { label: "Word Count", value: activeAudit.wordCount.toLocaleString() }),
+                React.createElement(Metric, { label: "Rendered", value: activeAudit.renderedContentLevel }),
+                React.createElement(Metric, { label: "Missing Alt", value: activeAudit.imagesMissingAlt.length })
+              ),
+              React.createElement(
+                "div",
+                { className: "grid" },
+                activeAudit.checks.map((check) =>
+                  React.createElement(CheckCard, {
+                    key: check.id,
+                    check,
+                    ready: Boolean(completed[check.id])
+                  })
+                )
+              ),
+              React.createElement(AuditOffer, {
+                onSchedule: (event) => openScheduler(event, "bottom"),
+                scheduler: schedulerOpen && schedulerPlacement === "bottom" ? renderScheduler() : null
+              })
+            )
+            : auditLoading
+              ? null
+              : React.createElement(
+                "div",
+                { className: "empty-state" },
+                React.createElement(
+                  "div",
+                  { className: "empty-content" },
+                  React.createElement("div", { className: "empty-title" }, "Run a fast SEO snapshot before investing in deeper work."),
+                  React.createElement(
+                    "ul",
+                    { className: "empty-list" },
+                    React.createElement("li", null, "Find technical issues that can block search engines from understanding or indexing the page."),
+                    React.createElement("li", null, "Spot missing on-page signals like titles, descriptions, headings, canonical URLs, and image alt text."),
+                    React.createElement("li", null, "Check visibility foundations for both traditional SEO and GEO discovery before prioritizing next steps."),
+                    React.createElement("li", null, "Use the results to decide whether a detailed 100+ parameter audit is worth scheduling.")
+                  )
+                )
+              )
+        )
+      );
+    }
+
+    function MeetingScheduler({
+      meetingDate,
+      meetingTime,
+      meetingLength,
+      setMeetingDate,
+      setMeetingTime,
+      setMeetingLength,
+      onClose,
+      panelRef
+    }) {
+      const selected = meetingDate && meetingTime;
+      const monthLabel = "June 2026";
+      const availableDays = [18, 19, 22, 23, 24, 25, 26, 29, 30];
+      const timeSlots = ["9:00 AM", "9:30 AM", "10:00 AM", "11:00 AM", "1:00 PM", "1:30 PM", "2:00 PM", "3:30 PM"];
+      const selectedDay = meetingDate ? Number(meetingDate.slice(-2)) : null;
+      const dates = Array.from({ length: 35 }, (_, index) => {
+        const day = index - 0;
+        return day >= 1 && day <= 30 ? day : null;
+      });
+
+      function chooseDay(day) {
+        if (!day || !availableDays.includes(day)) return;
+        setMeetingDate(`2026-06-${String(day).padStart(2, "0")}`);
+      }
+
+      return React.createElement(
+        "section",
+        { className: "scheduler-panel", "aria-label": "Schedule detailed audit meeting", ref: panelRef },
+        React.createElement(
+          "div",
+          { className: "scheduler-head" },
+          React.createElement(
+            "div",
+            null,
+            React.createElement("h2", { className: "scheduler-title" }, "Choose a detailed audit meeting time"),
+            React.createElement(
+              "div",
+              { className: "scheduler-copy" },
+              "Select a date and time for a deeper review of 100+ SEO and GEO parameters."
+            )
+          ),
+          React.createElement("button", { className: "scheduler-close", type: "button", onClick: onClose, "aria-label": "Close scheduler" }, "x")
+        ),
+        React.createElement(
+          "div",
+          { className: "zoom-picker" },
+          React.createElement(
+            "div",
+            { className: "calendar-pane" },
+            React.createElement(
+              "div",
+              { className: "month-row" },
+              React.createElement("button", { className: "month-button", type: "button", "aria-label": "Previous month" }, "<"),
+              React.createElement("div", { className: "month-title" }, monthLabel),
+              React.createElement("button", { className: "month-button", type: "button", "aria-label": "Next month" }, ">")
+            ),
+            React.createElement(
+              "div",
+              { className: "weekday-grid" },
+              ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) =>
+                React.createElement("div", { className: "weekday", key: day }, day)
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "date-grid" },
+              dates.map((day, index) => {
+                const enabled = day && availableDays.includes(day);
+                const active = day && day === selectedDay;
+                return React.createElement(
+                  "button",
+                  {
+                    className: `date-button${enabled ? "" : " is-muted"}${active ? " is-active" : ""}`,
+                    key: `${day || "blank"}-${index}`,
+                    type: "button",
+                    disabled: !enabled,
+                    onClick: () => chooseDay(day)
+                  },
+                  day || ""
+                );
+              })
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "time-pane" },
+            React.createElement("h3", { className: "time-title" }, meetingDate ? "Available times" : "Select a date"),
+            React.createElement("div", { className: "timezone" }, "Eastern Time"),
+            React.createElement(
+              "div",
+              { className: "time-slots" },
+              timeSlots.map((slot) =>
+                React.createElement(
+                  "button",
+                  {
+                    className: `time-slot${meetingTime === slot ? " is-active" : ""}`,
+                    key: slot,
+                    type: "button",
+                    disabled: !meetingDate,
+                    onClick: () => setMeetingTime(slot)
+                  },
+                  slot
+                )
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "length-row" },
+              React.createElement("span", null, "Meeting length"),
+              React.createElement(
+                "select",
+                {
+                  className: "length-select",
+                  value: meetingLength,
+                  onChange: (event) => setMeetingLength(event.target.value)
+                },
+                React.createElement("option", null, "30 minutes"),
+                React.createElement("option", null, "45 minutes"),
+                React.createElement("option", null, "60 minutes")
+              )
+            )
+          )
+        ),
+        selected
+          ? React.createElement(
+            "div",
+            { className: "scheduler-selection" },
+            `Selected meeting: ${meetingDate} at ${meetingTime} for ${meetingLength}`
+          )
+          : null
+      );
+    }
+
+    function AuditOffer({ onSchedule, scheduler }) {
+      return React.createElement(
+        React.Fragment,
+        null,
+        React.createElement(
+          "section",
+          { className: "audit-offer", "aria-label": "Detailed audit offer" },
+          React.createElement(
+            "div",
+            null,
+            React.createElement("div", { className: "offer-eyebrow" }, "Go deeper"),
+            React.createElement(
+              "div",
+              { className: "offer-title" },
+              "Unlock a detailed audit across 100+ SEO and GEO parameters"
+            ),
+            React.createElement(
+              "div",
+              { className: "offer-copy" },
+              "This quick scan is only the starting point. A detailed audit reviews more than 100 technical, content, local, search, and GEO visibility parameters, then prioritizes the fixes that can make the biggest difference."
+            )
+          ),
+          React.createElement(
+            "a",
+            { className: "offer-button", href: "#", role: "button", onClick: onSchedule },
+            "Schedule Zoom Meeting"
+          )
+        ),
+        scheduler
+      );
+    }
+
+    function Metric({ label, value }) {
+      return React.createElement(
+        "div",
+        { className: "metric" },
+        React.createElement("div", { className: "metric-label" }, label),
+        React.createElement("div", { className: "metric-value" }, value)
+      );
+    }
+
+    function CheckCard({ check, ready }) {
+      const statusClass = ready ? check.status : "waiting";
+      const className = `${check.list ? "card image-list" : "card"} ${statusClass}`;
+      return React.createElement(
+        "article",
+        { className },
+        React.createElement(
+          "div",
+          { className: "card-head" },
+          React.createElement("h2", { className: "card-title" }, check.label),
+          React.createElement(
+            "span",
+            { className: `badge ${ready ? check.status : "waiting"}` },
+            ready ? statusText(check.status) : "Checking"
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "card-body" },
+          ready
+            ? React.createElement(ResultContent, { check })
+            : React.createElement(LoadingContent)
+        )
+      );
+    }
+
+    function LoadingContent() {
+      return React.createElement(
+        "div",
+        { className: "loader" },
+        React.createElement("div", { className: "spinner" }),
+        React.createElement(
+          "div",
+          { className: "pulse-lines" },
+          React.createElement("div", { className: "pulse-line" }),
+          React.createElement("div", { className: "pulse-line short" })
+        )
+      );
+    }
+
+    function ResultContent({ check }) {
+      return React.createElement(
+        React.Fragment,
+        null,
+        React.createElement("div", { className: "result-line" }, check.result),
+        React.createElement("div", { className: "detail" }, check.detail),
+        check.list
+          ? React.createElement(
+            "ul",
+            { className: "links" },
+            (check.listItems || audit.imagesMissingAlt).map((imageUrl) =>
+              React.createElement("li", { key: imageUrl }, imageUrl)
+            )
+          )
+          : null
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+  </script>
+</body>
+
+</html>
