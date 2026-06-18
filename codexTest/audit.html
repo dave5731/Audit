@@ -25,6 +25,9 @@
       --accent: #0b2545;
       --accent-soft: #cfe0f5;
       --accent-glow: rgba(11, 37, 69, 0.34);
+      --button-green: #00a878;
+      --button-green-dark: #057052;
+      --button-green-glow: rgba(0, 168, 120, 0.36);
     }
 
     * {
@@ -106,19 +109,27 @@
 
     .audit-button {
       height: 54px;
-      border: 0;
+      border: 1px solid rgba(255, 255, 255, 0.55);
       border-radius: 8px;
       padding: 0 18px;
-      background: #111827;
+      background: linear-gradient(180deg, var(--button-green), var(--button-green-dark));
       color: #fff;
       font: inherit;
       font-weight: 760;
       cursor: pointer;
+      box-shadow: 0 12px 24px rgba(0, 58, 46, 0.3), 0 0 0 3px rgba(255, 255, 255, 0.14);
     }
 
     .audit-button:focus {
       outline: 3px solid rgba(255, 255, 255, 0.36);
       outline-offset: 2px;
+    }
+
+    .audit-button:hover,
+    .top-offer-button:hover,
+    .offer-button:hover {
+      background: linear-gradient(180deg, #10b98a, #04664c);
+      box-shadow: 0 14px 28px rgba(0, 58, 46, 0.36), 0 0 0 4px rgba(255, 255, 255, 0.18);
     }
 
     .empty-state {
@@ -278,9 +289,9 @@
     }
 
     .date-button.is-active {
-      background: #0b5cff;
+      background: var(--button-green);
       color: #fff;
-      box-shadow: 0 6px 14px rgba(11, 92, 255, 0.28);
+      box-shadow: 0 6px 14px var(--button-green-glow);
     }
 
     .time-title {
@@ -317,9 +328,9 @@
     }
 
     .time-slot.is-active {
-      background: #0b5cff;
+      background: var(--button-green);
       color: #fff;
-      border-color: #0b5cff;
+      border-color: var(--button-green);
     }
 
     .length-row {
@@ -405,11 +416,13 @@
       margin-top: 12px;
       padding: 0 14px;
       border-radius: 8px;
-      background: var(--accent);
+      background: linear-gradient(180deg, var(--button-green), var(--button-green-dark));
       color: #fff;
       text-decoration: none;
       font-size: 0.88rem;
       font-weight: 800;
+      border: 1px solid rgba(255, 255, 255, 0.48);
+      box-shadow: 0 10px 22px rgba(0, 58, 46, 0.28);
     }
 
     .top-offer-button:focus {
@@ -671,11 +684,13 @@
       min-height: 46px;
       padding: 0 18px;
       border-radius: 8px;
-      background: var(--accent);
+      background: linear-gradient(180deg, var(--button-green), var(--button-green-dark));
       color: #fff;
       text-decoration: none;
       font-weight: 800;
       white-space: nowrap;
+      border: 1px solid rgba(255, 255, 255, 0.48);
+      box-shadow: 0 12px 26px rgba(0, 58, 46, 0.3);
     }
 
     .offer-button:focus {
