@@ -283,6 +283,19 @@ def check_sitemap(url: str, timeout: int) -> dict[str, Any]:
     return {"exists": False, "url": "", "checked": checked}
 
 
+def check_llms_txt(url: str, timeout: int) -> dict[str, Any]:
+    llms_url = urljoin(site_root(url, "https"), "llms.txt")
+    status_code, final_url, error = fetch_status(llms_url, timeout)
+    return {
+        "exists": status_code is not None and 200 <= status_code < 400,
+        "url": final_url if status_code is not None and 200 <= status_code < 400 else "",
+        "checked_url": llms_url,
+        "status_code": status_code,
+        "final_url": final_url,
+        "error": error,
+    }
+
+
 def analyze_html(html: str, headers: dict[str, str], url: str, status_code: int) -> dict[str, Any]:
     parser = PageSEOParser()
     parser.feed(html)
@@ -332,6 +345,7 @@ def run_audit(url: str, timeout: int = REQUEST_TIMEOUT) -> dict[str, Any]:
     result["ssl"] = check_ssl(normalized_url, timeout)
     result["http_to_https_redirect"] = check_http_to_https_redirect(normalized_url, final_url)
     result["sitemap"] = check_sitemap(normalized_url, timeout)
+    result["llms_txt"] = check_llms_txt(normalized_url, timeout)
     return result
 
 
@@ -348,6 +362,7 @@ def print_summary(result: dict[str, Any]) -> None:
         f"{'YES' if result['http_to_https_redirect']['redirects_to_https'] else 'NO'}"
     )
     print(f"  sitemap_exists: {'YES' if result['sitemap']['exists'] else 'NO'}")
+    print(f"  llms_txt_exists: {'YES' if result['llms_txt']['exists'] else 'NO'}")
     print(
         "  google_tag_manager_present: "
         f"{'YES' if result['google_tag_manager_present'] else 'NO'}"
@@ -366,6 +381,7 @@ def print_summary(result: dict[str, Any]) -> None:
     )
     print()
     print(f"Sitemap URL: {result['sitemap']['url'] or 'Not found'}")
+    print(f"LLMs.txt URL: {result['llms_txt']['url'] or 'Not found'}")
     print()
     print(f"Noindex: {'YES' if result['noindex']['is_noindex'] else 'NO'}")
     for source in result["noindex"]["sources"]:

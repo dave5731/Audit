@@ -825,10 +825,11 @@
         { id: "ssl", label: "SSL", status: "pass", result: "Enabled", detail: "HTTPS endpoint is reachable.", accent: "#2563eb", delay: 2070 },
         { id: "redirect", label: "HTTP to HTTPS", status: "fail", result: "Redirect failed", detail: "The HTTP URL did not correctly resolve to the HTTPS version of the site.", accent: "#b42318", delay: 2350 },
         { id: "sitemap", label: "Sitemap", status: "pass", result: "Found", detail: "https://www.nauticalagency.com/sitemap_index.xml", accent: "#c47a00", delay: 2620 },
-        { id: "tagManager", label: "Google Tag Manager", status: "pass", result: "Detected", detail: "A Google Tag Manager container pattern was found in the fetched page source.", accent: "#2563eb", delay: 2920 },
-        { id: "renderedContent", label: "Rendered Content", status: "pass", result: "Low rendered content", detail: "A low level passes this test. Medium to high rendered content fails because the page may be heavier for crawlers and users.", accent: "#0f8b6f", delay: 3210 },
-        { id: "words", label: "Displayed Words", status: "pass", result: "1,212 words", detail: "Visible text count after skipping hidden/script/style text.", accent: "#6d4aff", delay: 3500 },
-        { id: "images", label: "Images Missing Alt", status: "warn", result: "5 images", detail: "Images without usable alt text are listed below.", accent: "#c47a00", delay: 3790, list: true }
+        { id: "llmsTxt", label: "AI Readiness", status: "fail", result: "Not found", detail: "No llms.txt file was found at the site root.", accent: "#b42318", delay: 2920 },
+        { id: "tagManager", label: "Google Tag Manager", status: "pass", result: "Detected", detail: "A Google Tag Manager container pattern was found in the fetched page source.", accent: "#2563eb", delay: 3210 },
+        { id: "renderedContent", label: "Rendered Content", status: "pass", result: "Low rendered content", detail: "A low level passes this test. Medium to high rendered content fails because the page may be heavier for crawlers and users.", accent: "#0f8b6f", delay: 3500 },
+        { id: "words", label: "Displayed Words", status: "pass", result: "1,212 words", detail: "Visible text count after skipping hidden/script/style text.", accent: "#6d4aff", delay: 3790 },
+        { id: "images", label: "Images Missing Alt", status: "warn", result: "5 images", detail: "Images without usable alt text are listed below.", accent: "#c47a00", delay: 4080, list: true }
       ]
     };
 
@@ -855,6 +856,10 @@
       const missingImages = result.images_missing_alt || [];
       const rendered = result.rendered_content || { level: "low", passes: true, element_count: 0 };
       const renderedLabel = rendered.level ? rendered.level[0].toUpperCase() + rendered.level.slice(1) : "Low";
+      const llmsTxt = result.llms_txt || result.llmsTxt || {
+        exists: false,
+        error: "No llms.txt file was found at the site root."
+      };
 
       return {
         httpStatus: result.status_code || "n/a",
@@ -871,10 +876,11 @@
           { id: "ssl", label: "SSL", status: boolStatus(result.ssl?.has_ssl), result: result.ssl?.has_ssl ? "Enabled" : "Not available", detail: result.ssl?.final_url || result.ssl?.error || "HTTPS endpoint check completed.", delay: 2070 },
           { id: "redirect", label: "HTTP to HTTPS", status: boolStatus(result.http_to_https_redirect?.redirects_to_https), result: result.http_to_https_redirect?.redirects_to_https ? "Redirects correctly" : "Redirect failed", detail: result.http_to_https_redirect?.final_url || "The HTTP URL did not correctly resolve to the HTTPS version of the site.", delay: 2350 },
           { id: "sitemap", label: "Sitemap", status: boolStatus(result.sitemap?.exists), result: result.sitemap?.exists ? "Found" : "Not found", detail: result.sitemap?.url || "No sitemap was found.", delay: 2620 },
-          { id: "tagManager", label: "Google Tag Manager", status: boolStatus(result.google_tag_manager_present), result: result.google_tag_manager_present ? "Detected" : "Not detected", detail: result.google_tag_manager_present ? "A Google Tag Manager container pattern was found." : "No Google Tag Manager pattern was found.", delay: 2920 },
-          { id: "renderedContent", label: "Rendered Content", status: rendered.passes ? "pass" : "fail", result: `${renderedLabel} rendered content`, detail: `${rendered.element_count || 0} rendered elements counted. Low passes; medium to high fails.`, delay: 3210 },
-          { id: "words", label: "Displayed Words", status: "pass", result: `${(result.visible_word_count || 0).toLocaleString()} words`, detail: "Visible text count after skipping hidden/script/style text.", delay: 3500 },
-          { id: "images", label: "Images Missing Alt", status: missingImages.length ? "warn" : "pass", result: `${missingImages.length} images`, detail: missingImages.length ? "Images without usable alt text are listed below." : "No images missing alt text were found.", delay: 3790, list: true, listItems: missingImages }
+          { id: "llmsTxt", label: "AI Readiness", status: boolStatus(llmsTxt.exists), result: llmsTxt.exists ? "Found" : "Not AI Ready", detail: llmsTxt.url || llmsTxt.error || "No llms.txt file was found at the site root.", delay: 2920 },
+          { id: "tagManager", label: "Google Tag Manager", status: boolStatus(result.google_tag_manager_present), result: result.google_tag_manager_present ? "Detected" : "Not detected", detail: result.google_tag_manager_present ? "A Google Tag Manager container pattern was found." : "No Google Tag Manager pattern was found.", delay: 3210 },
+          { id: "renderedContent", label: "Rendered Content", status: rendered.passes ? "pass" : "fail", result: `${renderedLabel} rendered content`, detail: `${rendered.element_count || 0} rendered elements counted. Low passes; medium to high fails.`, delay: 3500 },
+          { id: "words", label: "Displayed Words", status: "pass", result: `${(result.visible_word_count || 0).toLocaleString()} words`, detail: "Visible text count after skipping hidden/script/style text.", delay: 3790 },
+          { id: "images", label: "Images Missing Alt", status: missingImages.length ? "warn" : "pass", result: `${missingImages.length} images`, detail: missingImages.length ? "Images without usable alt text are listed below." : "No images missing alt text were found.", delay: 4080, list: true, listItems: missingImages }
         ]
       };
     }
