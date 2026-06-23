@@ -43,8 +43,10 @@ class PageSEOParser(HTMLParser):
         self.description = ""
         self.noindex_sources: list[dict[str, str]] = []
         self.visible_text_parts: list[str] = []
+        self.phone_numbers: list[str] = []
+        self.address_parts: list[str] = []
         self.images_missing_alt: list[str] = []
-        self.rendered_element_count = 0
+        self.privacy_policy_urls: list[str] = []
         self._in_title = False
         self._in_h1 = False
         self._hidden_depth = 0
@@ -65,9 +67,6 @@ class PageSEOParser(HTMLParser):
             self._hidden_depth += 1
             self._hidden_tag_stack.append(tag)
 
-        if self._hidden_depth == 0 and tag not in {"html", "body"}:
-            self.rendered_element_count += 1
-
         if tag == "title":
             self._in_title = True
             return
@@ -84,6 +83,19 @@ class PageSEOParser(HTMLParser):
 
         if tag == "meta":
             self._handle_meta(attr_map)
+
+        if tag == "a":
+            href = attr_map.get("href", "")
+            if href.lower().startswith("tel:"):
+                self.phone_numbers.append(href[4:])
+            if "privacy" in href.lower():
+                self.privacy_policy_urls.append(href)
+
+        itemprop = attr_map.get("itemprop", "").lower()
+        if itemprop in {"streetaddress", "addresslocality", "addressregion", "postalcode"}:
+            content = attr_map.get("content", "")
+            if content:
+                self.address_parts.append(content)
 
         if tag == "img" and not attr_map.get("alt", "").strip():
             image_url = (
@@ -152,11 +164,6 @@ def normalize_url(url: str) -> str:
     return url
 
 
-def url_with_scheme(url: str, scheme: str) -> str:
-    parsed = urlparse(url)
-    return urlunparse(parsed._replace(scheme=scheme))
-
-
 def site_root(url: str, scheme: str | None = None) -> str:
     parsed = urlparse(url)
     if scheme is not None:
@@ -164,9 +171,9 @@ def site_root(url: str, scheme: str | None = None) -> str:
     return urlunparse((parsed.scheme, parsed.netloc, "/", "", "", ""))
 
 
-def normalized_hostname(url: str) -> str:
-    hostname = urlparse(url).hostname or ""
-    return hostname.lower().removeprefix("www.")
+def url_with_scheme(url: str, scheme: str) -> str:
+    parsed = urlparse(url)
+    return urlunparse(parsed._replace(scheme=scheme))
 
 
 def fetch_url(url: str, timeout: int) -> tuple[str, dict[str, str], int, str]:
@@ -203,33 +210,71 @@ def find_header_noindex(headers: dict[str, str]) -> list[dict[str, str]]:
     return found
 
 
-def count_visible_words(text_parts: list[str]) -> int:
-    text = " ".join(" ".join(text_parts).split())
-    return len(re.findall(r"\b[\w']+\b", text))
-
-
-def rendered_content_result(element_count: int) -> dict[str, Any]:
-    if element_count <= 1000:
-        level = "low"
-    elif element_count <= 2500:
-        level = "medium"
-    else:
-        level = "high"
-
-    return {
-        "element_count": element_count,
-        "level": level,
-        "passes": level == "low",
-    }
-
-
-def has_google_tag_manager(html: str) -> bool:
+def has_google_analytics(html: str) -> bool:
     patterns = [
-        r"googletagmanager\.com/gtm\.js\?id=GTM-[A-Z0-9]+",
-        r"googletagmanager\.com/ns\.html\?id=GTM-[A-Z0-9]+",
-        r"\bGTM-[A-Z0-9]+\b",
+        r"google-analytics\.com/analytics\.js",
+        r"google-analytics\.com/ga\.js",
+        r"googletagmanager\.com/gtag/js\?id=(?:G|UA|AW)-[A-Z0-9-]+",
+        r"\bG-[A-Z0-9]{6,}\b",
+        r"\bUA-\d+-\d+\b",
+        r"gtag\(\s*['\"]config['\"]\s*,\s*['\"](?:G|UA|AW)-[A-Z0-9-]+['\"]",
+        r"GoogleAnalyticsObject",
     ]
     return any(re.search(pattern, html, re.IGNORECASE) for pattern in patterns)
+
+
+def visible_text(text_parts: list[str]) -> str:
+    return " ".join(" ".join(text_parts).split())
+
+
+def first_regex_match(pattern: str, text: str) -> str:
+    match = re.search(pattern, text, re.IGNORECASE)
+    return match.group(0).strip(" ,.;") if match else ""
+
+
+def clean_phone_number(value: str) -> str:
+    digits = re.sub(r"\D", "", value)
+    if len(digits) == 11 and digits.startswith("1"):
+        digits = digits[1:]
+    if len(digits) == 10:
+        return f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
+    return value.strip()
+
+
+def contact_info_result(parser: PageSEOParser, url: str) -> dict[str, Any]:
+    text = visible_text(parser.visible_text_parts)
+    phone = clean_phone_number(parser.phone_numbers[0]) if parser.phone_numbers else ""
+    phone = phone or first_regex_match(
+        r"(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}",
+        text,
+    )
+    address = " ".join(parser.address_parts).strip()
+    address = address or first_regex_match(
+        (
+            r"\b\d{1,6}\s+[A-Za-z0-9.'-]+(?:\s+[A-Za-z0-9.'-]+){0,5}\s+"
+            r"(?:Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Boulevard|Blvd\.?|"
+            r"Drive|Dr\.?|Lane|Ln\.?|Court|Ct\.?|Place|Pl\.?|Way|Circle|"
+            r"Cir\.?|Highway|Hwy\.?|Parkway|Pkwy\.?)\b[^\n,;]{0,80}"
+        ),
+        text,
+    )
+    privacy_url = parser.privacy_policy_urls[0] if parser.privacy_policy_urls else ""
+    has_privacy_policy = bool(privacy_url) or "privacy policy" in text.lower()
+
+    return {
+        "phone": {
+            "exists": bool(phone),
+            "value": phone,
+        },
+        "address": {
+            "exists": bool(address),
+            "value": address,
+        },
+        "privacy_policy": {
+            "exists": has_privacy_policy,
+            "url": urljoin(url, privacy_url) if privacy_url else "",
+        },
+    }
 
 
 def check_ssl(url: str, timeout: int) -> dict[str, Any]:
@@ -241,22 +286,6 @@ def check_ssl(url: str, timeout: int) -> dict[str, Any]:
         "status_code": status_code,
         "final_url": final_url,
         "error": error,
-    }
-
-
-def check_http_to_https_redirect(url: str, final_url: str) -> dict[str, Any]:
-    http_url = url_with_scheme(url, "http")
-    expected_https_url = url_with_scheme(http_url, "https")
-    final_parsed = urlparse(final_url)
-    redirects_to_https = (
-        final_parsed.scheme == "https"
-        and normalized_hostname(final_url) == normalized_hostname(expected_https_url)
-    )
-    return {
-        "checked_url": http_url,
-        "final_url": final_url,
-        "expected_https_url": expected_https_url,
-        "redirects_to_https": redirects_to_https,
     }
 
 
@@ -319,15 +348,19 @@ def analyze_html(html: str, headers: dict[str, str], url: str, status_code: int)
             "is_noindex": bool(parser.noindex_sources),
             "sources": parser.noindex_sources,
         },
-        "visible_word_count": count_visible_words(parser.visible_text_parts),
-        "rendered_content": rendered_content_result(parser.rendered_element_count),
+        "contact": contact_info_result(parser, url),
         "images_missing_alt": [
-            urljoin(url, image_url)
-            if image_url != "[image source missing]"
-            else image_url
+            {
+                "url": (
+                    urljoin(url, image_url)
+                    if image_url != "[image source missing]"
+                    else image_url
+                ),
+                "page_url": url,
+            }
             for image_url in parser.images_missing_alt
         ],
-        "google_tag_manager_present": has_google_tag_manager(html),
+        "google_analytics_present": has_google_analytics(html),
         "values": {
             "title": parser.title,
             "description": parser.description,
@@ -343,7 +376,6 @@ def run_audit(url: str, timeout: int = REQUEST_TIMEOUT) -> dict[str, Any]:
     html, headers, status_code, final_url = fetch_url(normalized_url, timeout)
     result = analyze_html(html, headers, final_url, status_code)
     result["ssl"] = check_ssl(normalized_url, timeout)
-    result["http_to_https_redirect"] = check_http_to_https_redirect(normalized_url, final_url)
     result["sitemap"] = check_sitemap(normalized_url, timeout)
     result["llms_txt"] = check_llms_txt(normalized_url, timeout)
     return result
@@ -357,15 +389,17 @@ def print_summary(result: dict[str, Any]) -> None:
     for label, present in result["checks"].items():
         print(f"  {label}: {'YES' if present else 'NO'}")
     print(f"  ssl: {'YES' if result['ssl']['has_ssl'] else 'NO'}")
-    print(
-        "  http_to_https_redirect: "
-        f"{'YES' if result['http_to_https_redirect']['redirects_to_https'] else 'NO'}"
-    )
     print(f"  sitemap_exists: {'YES' if result['sitemap']['exists'] else 'NO'}")
     print(f"  llms_txt_exists: {'YES' if result['llms_txt']['exists'] else 'NO'}")
+    print(f"  phone_exists: {'YES' if result['contact']['phone']['exists'] else 'NO'}")
+    print(f"  address_exists: {'YES' if result['contact']['address']['exists'] else 'NO'}")
     print(
-        "  google_tag_manager_present: "
-        f"{'YES' if result['google_tag_manager_present'] else 'NO'}"
+        "  privacy_policy_exists: "
+        f"{'YES' if result['contact']['privacy_policy']['exists'] else 'NO'}"
+    )
+    print(
+        "  google_analytics_present: "
+        f"{'YES' if result['google_analytics_present'] else 'NO'}"
     )
     print()
     print(f"SSL checked URL: {result['ssl']['checked_url']}")
@@ -373,32 +407,22 @@ def print_summary(result: dict[str, Any]) -> None:
     if result["ssl"]["error"]:
         print(f"SSL error: {result['ssl']['error']}")
     print()
-    print(f"HTTP to HTTPS checked URL: {result['http_to_https_redirect']['checked_url']}")
-    print(f"HTTP to HTTPS final URL: {result['http_to_https_redirect']['final_url']}")
-    print(
-        "Expected HTTPS URL: "
-        f"{result['http_to_https_redirect']['expected_https_url']}"
-    )
-    print()
     print(f"Sitemap URL: {result['sitemap']['url'] or 'Not found'}")
     print(f"LLMs.txt URL: {result['llms_txt']['url'] or 'Not found'}")
+    print(f"Phone: {result['contact']['phone']['value'] or 'Not found'}")
+    print(f"Address: {result['contact']['address']['value'] or 'Not found'}")
+    print(
+        "Privacy policy URL: "
+        f"{result['contact']['privacy_policy']['url'] or 'Not found'}"
+    )
     print()
     print(f"Noindex: {'YES' if result['noindex']['is_noindex'] else 'NO'}")
     for source in result["noindex"]["sources"]:
         print(f"  {source['source']}: {source['directive']}")
     print()
-    print(f"Displayed word count: {result['visible_word_count']}")
-    print()
-    print(
-        "Rendered content: "
-        f"{result['rendered_content']['level'].upper()} "
-        f"({result['rendered_content']['element_count']} elements) "
-        f"{'PASS' if result['rendered_content']['passes'] else 'FAIL'}"
-    )
-    print()
     print(f"Images missing alt text: {len(result['images_missing_alt'])}")
-    for image_url in result["images_missing_alt"]:
-        print(f"  {image_url}")
+    for image in result["images_missing_alt"]:
+        print(f"  {image['url']} found on {image['page_url']}")
 
 
 def main() -> int:

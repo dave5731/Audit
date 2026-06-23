@@ -463,7 +463,7 @@
 
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
       margin-bottom: 14px;
     }
@@ -642,6 +642,46 @@
       overflow-wrap: anywhere;
     }
 
+    .image-problem-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      padding: 0;
+      font: inherit;
+      font-weight: 760;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .image-problem-toggle span:last-child {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .image-problem-detail {
+      display: grid;
+      gap: 7px;
+      margin-top: 9px;
+      padding-top: 9px;
+      border-top: 1px solid #e4e9ef;
+    }
+
+    .image-problem-detail div {
+      overflow-wrap: anywhere;
+    }
+
+    .image-problem-detail strong {
+      color: var(--ink);
+    }
+
     .audit-offer {
       margin-top: 14px;
       padding: 22px;
@@ -806,30 +846,27 @@
 
     const audit = {
       httpStatus: 200,
-      wordCount: 1212,
-      renderedContentLevel: "Low",
       imagesMissingAlt: [
-        "https://nauticalagency.com/wp-content/uploads/2022/04/nautical-agency-log-v3.png",
-        "https://nauticalagency.com/wp-content/uploads/2022/05/thought-leadership3.png",
-        "https://nauticalagency.com/wp-content/uploads/2022/05/thought-leadership5.jpg",
-        "https://nauticalagency.com/wp-content/uploads/2025/11/mark2.png",
-        "https://nauticalagency.com/wp-content/uploads/2022/04/nautical-agency-log-v4.png"
+        { url: "https://nauticalagency.com/wp-content/uploads/2022/04/nautical-agency-log-v3.png", page_url: "https://www.nauticalagency.com/" },
+        { url: "https://nauticalagency.com/wp-content/uploads/2022/05/thought-leadership3.png", page_url: "https://www.nauticalagency.com/" },
+        { url: "https://nauticalagency.com/wp-content/uploads/2022/05/thought-leadership5.jpg", page_url: "https://www.nauticalagency.com/" },
+        { url: "https://nauticalagency.com/wp-content/uploads/2025/11/mark2.png", page_url: "https://www.nauticalagency.com/" },
+        { url: "https://nauticalagency.com/wp-content/uploads/2022/04/nautical-agency-log-v4.png", page_url: "https://www.nauticalagency.com/" }
       ],
       checks: [
         { id: "title", label: "Title Tag", status: "pass", result: "Present", detail: "Page title was found.", accent: "#0f766e", delay: 450 },
-        { id: "description", label: "Description", status: "pass", result: "Present", detail: "Description signal was found.", accent: "#2563eb", delay: 720 },
+        { id: "description", label: "Description", status: "fail", result: "Missing", detail: "No meta description tag was found on the page.", accent: "#b42318", delay: 720 },
         { id: "canonical", label: "Canonical URL", status: "pass", result: "Present", detail: "Canonical URL was found.", accent: "#6d4aff", delay: 980 },
         { id: "h1", label: "H1 Tag", status: "fail", result: "Missing", detail: "No H1 tag was found on the page.", accent: "#b42318", delay: 1250 },
-        { id: "metaDescription", label: "Meta Description", status: "fail", result: "Missing", detail: "No meta description tag was found on the page.", accent: "#b42318", delay: 1510 },
-        { id: "noindex", label: "Noindex", status: "pass", result: "Not set", detail: "No noindex directive was found.", accent: "#0f766e", delay: 1790 },
-        { id: "ssl", label: "SSL", status: "pass", result: "Enabled", detail: "HTTPS endpoint is reachable.", accent: "#2563eb", delay: 2070 },
-        { id: "redirect", label: "HTTP to HTTPS", status: "fail", result: "Redirect failed", detail: "The HTTP URL did not correctly resolve to the HTTPS version of the site.", accent: "#b42318", delay: 2350 },
-        { id: "sitemap", label: "Sitemap", status: "pass", result: "Found", detail: "https://www.nauticalagency.com/sitemap_index.xml", accent: "#c47a00", delay: 2620 },
-        { id: "llmsTxt", label: "AI Readiness", status: "fail", result: "Not found", detail: "No llms.txt file was found at the site root.", accent: "#b42318", delay: 2920 },
-        { id: "tagManager", label: "Google Tag Manager", status: "pass", result: "Detected", detail: "A Google Tag Manager container pattern was found in the fetched page source.", accent: "#2563eb", delay: 3210 },
-        { id: "renderedContent", label: "Rendered Content", status: "pass", result: "Low rendered content", detail: "A low level passes this test. Medium to high rendered content fails because the page may be heavier for crawlers and users.", accent: "#0f8b6f", delay: 3500 },
-        { id: "words", label: "Displayed Words", status: "pass", result: "1,212 words", detail: "Visible text count after skipping hidden/script/style text.", accent: "#6d4aff", delay: 3790 },
-        { id: "images", label: "Images Missing Alt", status: "warn", result: "5 images", detail: "Images without usable alt text are listed below.", accent: "#c47a00", delay: 4080, list: true }
+        { id: "noindex", label: "Noindex", status: "pass", result: "Not set", detail: "No noindex directive was found.", accent: "#0f766e", delay: 1510 },
+        { id: "phone", label: "Phone Number", status: "pass", result: "Found", detail: "A phone number was found on the page.", accent: "#0f766e", delay: 1790 },
+        { id: "address", label: "Address", status: "pass", result: "Found", detail: "A street address was found on the page.", accent: "#0f766e", delay: 2070 },
+        { id: "privacyPolicy", label: "Privacy Policy", status: "pass", result: "Found", detail: "A privacy policy link was found on the page.", accent: "#0f766e", delay: 2350 },
+        { id: "ssl", label: "SSL", status: "pass", result: "Enabled", detail: "HTTPS endpoint is reachable.", accent: "#2563eb", delay: 2620 },
+        { id: "sitemap", label: "Sitemap", status: "pass", result: "Found", detail: "https://www.nauticalagency.com/sitemap_index.xml", accent: "#c47a00", delay: 2920 },
+        { id: "llmsTxt", label: "AI Readiness", status: "fail", result: "Not found", detail: "No llms.txt file was found at the site root.", accent: "#b42318", delay: 3210 },
+        { id: "analytics", label: "Google Analytics", status: "pass", result: "Detected", detail: "A Google Analytics tracking pattern was found in the fetched page source.", accent: "#2563eb", delay: 3500 },
+        { id: "images", label: "Image Problems", status: "warn", result: "5 images", detail: "Images without usable alt text are listed below.", accent: "#c47a00", delay: 3790, list: true }
       ]
     };
 
@@ -852,35 +889,47 @@
       return value ? "Present" : "Missing";
     }
 
+    function normalizeImageProblems(items, pageUrl) {
+      return (items || []).map((item) => {
+        if (typeof item === "string") {
+          return { url: item, page_url: pageUrl || "" };
+        }
+        return {
+          url: item.url || item.image_url || "[image source missing]",
+          page_url: item.page_url || item.pageUrl || pageUrl || ""
+        };
+      });
+    }
+
     function buildAuditFromResponse(result) {
-      const missingImages = result.images_missing_alt || [];
-      const rendered = result.rendered_content || { level: "low", passes: true, element_count: 0 };
-      const renderedLabel = rendered.level ? rendered.level[0].toUpperCase() + rendered.level.slice(1) : "Low";
+      const missingImages = normalizeImageProblems(result.images_missing_alt, result.url);
       const llmsTxt = result.llms_txt || result.llmsTxt || {
         exists: false,
         error: "No llms.txt file was found at the site root"
       };
+      const contact = result.contact || {};
+      const phone = contact.phone || {};
+      const address = contact.address || {};
+      const privacyPolicy = contact.privacy_policy || contact.privacyPolicy || {};
 
       return {
         httpStatus: result.status_code || "n/a",
-        wordCount: result.visible_word_count || 0,
-        renderedContentLevel: renderedLabel,
         imagesMissingAlt: missingImages,
         checks: [
-          { id: "title", label: "Title Tag", status: boolStatus(result.checks?.title), result: presentText(result.checks?.title), detail: result.values?.title || "No page title was found.", delay: 450 },
-          { id: "description", label: "Description", status: boolStatus(result.checks?.description), result: presentText(result.checks?.description), detail: result.values?.description || "No description signal was found.", delay: 720 },
-          { id: "canonical", label: "Canonical URL", status: boolStatus(result.checks?.canonical_url), result: presentText(result.checks?.canonical_url), detail: result.values?.canonical_url || "No canonical URL was found.", delay: 980 },
-          { id: "h1", label: "H1 Tag", status: boolStatus(result.checks?.h1_tag), result: presentText(result.checks?.h1_tag), detail: result.values?.h1_tags?.join(", ") || "No H1 tag was found on the page.", delay: 1250 },
-          { id: "metaDescription", label: "Meta Description", status: boolStatus(result.checks?.meta_description_tag), result: presentText(result.checks?.meta_description_tag), detail: result.values?.meta_description || "No meta description tag was found on the page.", delay: 1510 },
-          { id: "noindex", label: "Noindex", status: result.noindex?.is_noindex ? "fail" : "pass", result: result.noindex?.is_noindex ? "Noindex found" : "Not set", detail: result.noindex?.sources?.map((source) => `${source.source}: ${source.directive}`).join(", ") || "No noindex directive was found.", delay: 1790 },
-          { id: "ssl", label: "SSL", status: boolStatus(result.ssl?.has_ssl), result: result.ssl?.has_ssl ? "Enabled" : "Not available", detail: result.ssl?.final_url || result.ssl?.error || "HTTPS endpoint check completed.", delay: 2070 },
-          { id: "redirect", label: "HTTP to HTTPS", status: boolStatus(result.http_to_https_redirect?.redirects_to_https), result: result.http_to_https_redirect?.redirects_to_https ? "Redirects correctly" : "Redirect failed", detail: result.http_to_https_redirect?.final_url || "The HTTP URL did not correctly resolve to the HTTPS version of the site.", delay: 2350 },
-          { id: "sitemap", label: "Sitemap", status: boolStatus(result.sitemap?.exists), result: result.sitemap?.exists ? "Found" : "Not found", detail: result.sitemap?.url || "No sitemap was found.", delay: 2620 },
-          { id: "llmsTxt", label: "AI Readiness", status: boolStatus(llmsTxt.exists), result: llmsTxt.exists ? "Found" : "Not AI Ready", detail: llmsTxt.url || llmsTxt.error || "No llms.txt file was found at the site root.", delay: 2920 },
-          { id: "tagManager", label: "Google Tag Manager", status: boolStatus(result.google_tag_manager_present), result: result.google_tag_manager_present ? "Detected" : "Not detected", detail: result.google_tag_manager_present ? "A Google Tag Manager container pattern was found." : "No Google Tag Manager pattern was found.", delay: 3210 },
-          { id: "renderedContent", label: "Rendered Content", status: rendered.passes ? "pass" : "fail", result: `${renderedLabel} rendered content`, detail: `${rendered.element_count || 0} rendered elements counted. Low passes; medium to high fails.`, delay: 3500 },
-          { id: "words", label: "Displayed Words", status: "pass", result: `${(result.visible_word_count || 0).toLocaleString()} words`, detail: "Visible text count after skipping hidden/script/style text.", delay: 3790 },
-          { id: "images", label: "Images Missing Alt", status: missingImages.length ? "warn" : "pass", result: `${missingImages.length} images`, detail: missingImages.length ? "Images without usable alt text are listed below." : "No images missing alt text were found.", delay: 4080, list: true, listItems: missingImages }
+          { id: "title", label: "Title Tag", status: boolStatus(result.checks?.title), result: presentText(result.checks?.title), detail: result.values?.title || "If you don't define one, GOogle will make one up for you.", delay: 450 },
+          { id: "description", label: "Description", status: boolStatus(result.checks?.meta_description_tag), result: presentText(result.checks?.meta_description_tag), detail: result.values?.meta_description || "If you don't define one, GOogle will make one up for you.", delay: 720 },
+          { id: "canonical", label: "Canonical URL", status: boolStatus(result.checks?.canonical_url), result: presentText(result.checks?.canonical_url), detail: result.values?.canonical_url || "Google and AI may disqualify your site.", delay: 980 },
+          { id: "h1", label: "H1 Tag", status: boolStatus(result.checks?.h1_tag), result: presentText(result.checks?.h1_tag), detail: result.values?.h1_tags?.join(", ") || "Without this signal to Google and AI, you won't rank well.", delay: 1250 },
+          { id: "noindex", label: "Noindex", status: result.noindex?.is_noindex ? "fail" : "pass", result: result.noindex?.is_noindex ? "Noindex found" : "Not set", detail: result.noindex?.sources?.map((source) => `${source.source}: ${source.directive}`).join(", ") || "This single line of source code is causing your site to not show up on Google and AI.", delay: 1510 },
+          { id: "phone", label: "Phone Number", status: boolStatus(phone.exists), result: phone.exists ? "Found" : "Missing", detail: phone.value || "Without a phone number you will generally receive 1/2 as many phone calls if your phone number is not on your main page.", delay: 1790 },
+          { id: "address", label: "Address", status: boolStatus(address.exists), result: address.exists ? "Found" : "Missing", detail: address.value || "Google views this as a trust signal to have this on your website.", delay: 2070 },
+          { id: "privacyPolicy", label: "Privacy Policy", status: boolStatus(privacyPolicy.exists), result: privacyPolicy.exists ? "Found" : "Missing", detail: privacyPolicy.url || "Google may evaluate your site as less trustworthy if you don't have this.", delay: 2350 },
+          { id: "ssl", label: "SSL", status: boolStatus(result.ssl?.has_ssl), result: result.ssl?.has_ssl ? "Enabled" : "Not available", detail: result.ssl?.final_url || result.ssl?.error || "HTTPS endpoint check completed.", delay: 2620 },
+          { id: "sitemap", label: "Sitemap", status: boolStatus(result.sitemap?.exists), result: result.sitemap?.exists ? "Found" : "If you don't have this, Google and AI services may have trouble discovering everything on your site so it can be shown.", detail: result.sitemap?.url || "No sitemap was found.", delay: 2920 },
+          { id: "llmsTxt", label: "AI Readiness", status: boolStatus(llmsTxt.exists), result: llmsTxt.exists ? "Found" : "Not AI Ready", detail: llmsTxt.url || llmsTxt.error || "No llms.txt file was found at the site root.", delay: 3210 },
+          { id: "analytics", label: "Google Analytics", status: boolStatus(result.google_analytics_present), result: result.google_analytics_present ? "Detected" : "Not detected", detail: result.google_analytics_present ? "A Google Analytics tracking pattern was found." : "No Google Analytics tracking pattern was found.", delay: 3500 },
+          { id: "images", label: "Image Problems", status: missingImages.length ? "warn" : "pass", result: `${missingImages.length} images`, detail: missingImages.length ? "without alt text on your images, Google and AI services may rank you lower. Images without usable alt text are listed below." : "No images missing alt text were found.", delay: 2920, list: true, listItems: missingImages }
+
         ]
       };
     }
@@ -1012,8 +1061,8 @@
                     "div",
                     { className: "top-offer" },
                     React.createElement("div", { className: "top-offer-label" }, "Detailed audit"),
-                    React.createElement("div", { className: "top-offer-title" }, "Schedule a deeper SEO and GEO review"),
-                    React.createElement("div", { className: "top-offer-copy" }, "Review 100+ parameters and get a prioritized action plan."),
+                    React.createElement("div", { className: "top-offer-title" }, "Schedule my free 30 minute SEO and AI Readiness review"),
+                    React.createElement("div", { className: "top-offer-copy" }, "Get a deep review of hundreds of site parameters and a prioritized action plan."),
                     React.createElement("a", { className: "top-offer-button", href: "#", role: "button", onClick: (event) => openScheduler(event, "top") }, "Schedule Audit")
                   )
                   : null,
@@ -1064,9 +1113,7 @@
                 { className: "summary-grid" },
                 React.createElement(Metric, { label: "HTTP Status", value: activeAudit.httpStatus }),
                 React.createElement(Metric, { label: "Passed", value: passCount }),
-                React.createElement(Metric, { label: "Word Count", value: activeAudit.wordCount.toLocaleString() }),
-                React.createElement(Metric, { label: "Rendered", value: activeAudit.renderedContentLevel }),
-                React.createElement(Metric, { label: "Missing Alt", value: activeAudit.imagesMissingAlt.length })
+                React.createElement(Metric, { label: "Image Problems", value: activeAudit.imagesMissingAlt.length })
               ),
               React.createElement(
                 "div",
@@ -1322,6 +1369,12 @@
     }
 
     function ResultContent({ check }) {
+      const [expandedItems, setExpandedItems] = React.useState({});
+
+      function toggleExpanded(key) {
+        setExpandedItems((current) => ({ ...current, [key]: !current[key] }));
+      }
+
       return React.createElement(
         React.Fragment,
         null,
@@ -1331,9 +1384,48 @@
           ? React.createElement(
             "ul",
             { className: "links" },
-            (check.listItems || audit.imagesMissingAlt).map((imageUrl) =>
-              React.createElement("li", { key: imageUrl }, imageUrl)
-            )
+            normalizeImageProblems(check.listItems || audit.imagesMissingAlt, "").map((image, index) => {
+              const key = `${image.url}-${index}`;
+              const expanded = Boolean(expandedItems[key]);
+              return React.createElement(
+                "li",
+                { key },
+                React.createElement(
+                  "button",
+                  {
+                    className: "image-problem-toggle",
+                    type: "button",
+                    onClick: () => toggleExpanded(key),
+                    "aria-expanded": expanded
+                  },
+                  React.createElement("span", null, `Image ${index + 1}`),
+                  React.createElement("span", null, expanded ? "Hide" : "Expand")
+                ),
+                expanded
+                  ? React.createElement(
+                    "div",
+                    { className: "image-problem-detail" },
+                    React.createElement("div", null, React.createElement("strong", null, "Image URL: "), image.url),
+                    React.createElement(
+                      "div",
+                      null,
+                      React.createElement("strong", null, "Found on page: "),
+                      image.page_url
+                        ? React.createElement(
+                          "a",
+                          {
+                            href: image.page_url,
+                            target: "_blank",
+                            rel: "noopener noreferrer"
+                          },
+                          image.page_url
+                        )
+                        : "Current audited page"
+                    )
+                  )
+                  : null
+              );
+            })
           )
           : null
       );
