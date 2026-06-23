@@ -60,10 +60,39 @@
     }
 
     .title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: minmax(160px, 240px) minmax(280px, 1fr) minmax(270px, 330px);
+      align-items: start;
       gap: 24px;
+    }
+
+    .brand-lockup {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 220px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 12px 26px rgba(0, 58, 46, 0.22);
+    }
+
+    .brand-logo {
+      display: block;
+      width: 190px;
+      height: auto;
+      max-height: 42px;
+      object-fit: contain;
+    }
+
+    .title-copy {
+      align-self: center;
+      justify-self: end;
+      text-align: left;
+      padding-top: 4px;
+      width: fit-content;
+      max-width: 620px;
+      transform: translateX(clamp(18px, 3vw, 42px));
     }
 
     h1 {
@@ -77,6 +106,8 @@
       margin-top: 12px;
       color: rgba(255, 255, 255, 0.82);
       font-size: 0.98rem;
+      width: fit-content;
+      max-width: 620px;
       overflow-wrap: anywhere;
     }
 
@@ -172,6 +203,40 @@
       border-left: 5px solid var(--accent);
       border-radius: 8px;
       box-shadow: 0 12px 32px rgba(21, 34, 50, 0.08);
+    }
+
+    .audit-error-panel {
+      margin-bottom: 14px;
+      padding: 20px;
+      background: #fff7f6;
+      border: 1px solid #ffd0cc;
+      border-left: 5px solid var(--bad);
+      border-radius: 8px;
+      box-shadow: 0 12px 32px rgba(21, 34, 50, 0.08);
+    }
+
+    .audit-error-title {
+      color: var(--bad);
+      font-size: 1.12rem;
+      line-height: 1.25;
+      font-weight: 820;
+    }
+
+    .audit-error-copy {
+      margin-top: 8px;
+      color: #344054;
+      line-height: 1.48;
+    }
+
+    .audit-error-detail {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid #ffe1dd;
+      border-radius: 6px;
+      color: #667085;
+      overflow-wrap: anywhere;
+      font-size: 0.92rem;
     }
 
     .scheduler-head {
@@ -378,6 +443,7 @@
       gap: 12px;
       min-width: 270px;
       max-width: 330px;
+      justify-self: end;
     }
 
     .top-offer {
@@ -757,7 +823,30 @@
 
     @media (max-width: 920px) {
       .title-row {
-        display: block;
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+      }
+
+      .brand-lockup {
+        width: min(220px, 100%);
+      }
+
+      .brand-logo {
+        width: min(190px, 100%);
+      }
+
+      .title-copy {
+        justify-self: center;
+        text-align: center;
+        padding-top: 0;
+        width: auto;
+        transform: none;
+      }
+
+      .target {
+        margin-left: auto;
+        margin-right: auto;
       }
 
       .score-card {
@@ -768,6 +857,8 @@
       .top-side {
         max-width: none;
         margin-top: 22px;
+        justify-self: stretch;
+        width: 100%;
       }
 
       .score-card {
@@ -1049,7 +1140,18 @@
               { className: "title-row" },
               React.createElement(
                 "div",
-                null,
+                { className: "brand-lockup" },
+                React.createElement("img", {
+                  className: "brand-logo",
+                  src: "https://nauticalagency.com/wp-content/uploads/2022/04/nautical-agency-log-v3.png",
+                  width: "2048",
+                  height: "435",
+                  alt: "Nautical Agency"
+                })
+              ),
+              React.createElement(
+                "div",
+                { className: "title-copy" },
                 React.createElement("h1", null, "Instant SEO Audit"),
                 React.createElement("div", { className: "target" }, targetLabel)
               ),
@@ -1101,7 +1203,18 @@
             ? React.createElement("div", { className: "scheduler-panel" }, "Running the SEO audit...")
             : null,
           auditError
-            ? React.createElement("div", { className: "scheduler-panel" }, `Audit error: ${auditError}`)
+            ? React.createElement(
+              "div",
+              { className: "audit-error-panel", role: "alert" },
+              React.createElement("div", { className: "audit-error-title" }, "We could not reach that URL"),
+              React.createElement(
+                "div",
+                { className: "audit-error-copy" },
+                "Check that the address is spelled correctly, the site is online, and the URL starts with http:// or https://."
+              ),
+              React.createElement("div", { className: "audit-error-detail" }, `URL: ${submittedUrl || inputUrl}`),
+              React.createElement("div", { className: "audit-error-detail" }, `Details: ${auditError}`)
+            )
             : null,
           schedulerOpen && schedulerPlacement === "top" ? renderScheduler() : null,
           auditReady
