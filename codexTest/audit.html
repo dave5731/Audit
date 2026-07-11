@@ -61,28 +61,9 @@
 
     .title-row {
       display: grid;
-      grid-template-columns: minmax(160px, 240px) minmax(280px, 1fr) minmax(270px, 330px);
+      grid-template-columns: minmax(280px, 1fr) minmax(270px, 330px);
       align-items: start;
       gap: 24px;
-    }
-
-    .brand-lockup {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 220px;
-      padding: 7px 10px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.96);
-      box-shadow: 0 12px 26px rgba(0, 58, 46, 0.22);
-    }
-
-    .brand-logo {
-      display: block;
-      width: 190px;
-      height: auto;
-      max-height: 42px;
-      object-fit: contain;
     }
 
     .title-copy {
@@ -828,14 +809,6 @@
         text-align: center;
       }
 
-      .brand-lockup {
-        width: min(220px, 100%);
-      }
-
-      .brand-logo {
-        width: min(190px, 100%);
-      }
-
       .title-copy {
         justify-self: center;
         text-align: center;
@@ -1138,17 +1111,6 @@
             React.createElement(
               "div",
               { className: "title-row" },
-              React.createElement(
-                "div",
-                { className: "brand-lockup" },
-                React.createElement("img", {
-                  className: "brand-logo",
-                  src: "https://nauticalagency.com/wp-content/uploads/2022/04/nautical-agency-log-v3.png",
-                  width: "2048",
-                  height: "435",
-                  alt: "Nautical Agency"
-                })
-              ),
               React.createElement(
                 "div",
                 { className: "title-copy" },

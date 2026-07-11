@@ -254,7 +254,8 @@ def contact_info_result(parser: PageSEOParser, url: str) -> dict[str, Any]:
             r"\b\d{1,6}\s+[A-Za-z0-9.'-]+(?:\s+[A-Za-z0-9.'-]+){0,5}\s+"
             r"(?:Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Boulevard|Blvd\.?|"
             r"Drive|Dr\.?|Lane|Ln\.?|Court|Ct\.?|Place|Pl\.?|Way|Circle|"
-            r"Cir\.?|Highway|Hwy\.?|Parkway|Pkwy\.?)\b[^\n,;]{0,80}"
+            r"Cir\.?|Highway|Hwy\.?|Parkway|Pkwy\.?|Turnpike|Tpke\.?|"
+            r"Route|Rte\.?)\b[^\n,;]{0,80}"
         ),
         text,
     )
