@@ -20,6 +20,20 @@ The shortcode renders the interactive audit dashboard. The dashboard calls this 
 
 The endpoint accepts a `POST` request with `siteUrl` and optional `timeout` form fields.
 
+## Query Parameters
+
+Add a `url` query parameter to prefill the audit input field without running the audit automatically:
+
+```text
+https://example.com/audit-page/?url=https%3A%2F%2Fwww.example-site.com
+```
+
+Add `arnw52=imd` with the `url` parameter to automatically run the audit when the plugin page loads:
+
+```text
+https://example.com/audit-page/?arnw52=imd&url=https%3A%2F%2Fwww.example-site.com
+```
+
 Submitted audit URLs and anonymous launch counters are recorded in custom WordPress tables. View them in WordPress admin under:
 
 ```text
