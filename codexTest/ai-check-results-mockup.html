@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detailed AI Visibility Check — Results Mockup</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #667085;
+      --line: #dce3e9;
+      --paper: #fff;
+      --page: #f4f7f8;
+      --navy: #0b2545;
+      --teal: #106068;
+      --green: #087a5b;
+      --green-soft: #e6f5ef;
+      --amber: #a35c00;
+      --amber-soft: #fff4db;
+      --red: #b42318;
+      --red-soft: #feebe9;
+      --blue: #2458a6;
+      --blue-soft: #eaf2ff;
+      --shadow: 0 12px 34px rgba(19, 35, 49, .08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    button, a { font: inherit; }
+    .wrap { width: min(1200px, calc(100% - 32px)); margin: 0 auto; }
+    .hero {
+      color: #fff;
+      padding: 28px 0 92px;
+      background:
+        radial-gradient(circle at 88% 14%, rgba(79, 209, 188, .2), transparent 30%),
+        linear-gradient(135deg, #0b354a 0%, var(--teal) 58%, #0b4b51 100%);
+      border-bottom: 5px solid var(--navy);
+    }
+
+    .hero-top, .title-row, .section-head, .check-head, .page-cell, .roadmap-step {
+      display: flex;
+      align-items: center;
+    }
+
+    .hero-top { justify-content: space-between; gap: 16px; }
+    .brand { font-weight: 800; letter-spacing: .02em; }
+    .mock-label {
+      padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,.4);
+      border-radius: 999px;
+      background: rgba(255,255,255,.1);
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .1em;
+    }
+
+    .title-row { justify-content: space-between; align-items: end; gap: 30px; margin-top: 44px; }
+    h1 { margin: 0; max-width: 760px; font-size: clamp(2rem, 5vw, 3.65rem); line-height: 1.04; }
+    .subtitle { margin: 16px 0 0; max-width: 760px; color: rgba(255,255,255,.82); font-size: 1.05rem; }
+    .site-pill {
+      flex: 0 0 auto;
+      padding: 12px 15px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.25);
+      font-size: .86rem;
+    }
+    .site-pill strong { display: block; margin-top: 2px; font-size: 1rem; }
+
+    main { margin-top: -58px; padding-bottom: 60px; }
+    .card, .score-card, .summary, .check-group, .table-card, .roadmap {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .overview { display: grid; grid-template-columns: 280px 1fr; gap: 16px; }
+    .score-card { padding: 24px; text-align: center; }
+    .eyebrow { color: var(--muted); font-size: .73rem; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+    .score-ring {
+      width: 150px;
+      aspect-ratio: 1;
+      margin: 18px auto;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(#e59a18 0 68%, #e8edf1 68% 100%);
+      position: relative;
+    }
+    .score-ring::before { content: ""; position: absolute; inset: 12px; border-radius: 50%; background: #fff; }
+    .score-value { position: relative; font-size: 2.75rem; font-weight: 850; line-height: 1; }
+    .score-value small { display: block; margin-top: 7px; color: var(--muted); font-size: .7rem; text-transform: uppercase; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 9px; font-size: .73rem; font-weight: 800; }
+    .badge.warn { color: var(--amber); background: var(--amber-soft); }
+    .badge.pass { color: var(--green); background: var(--green-soft); }
+    .badge.fail { color: var(--red); background: var(--red-soft); }
+    .badge.info { color: var(--blue); background: var(--blue-soft); }
+
+    .summary { padding: 22px; }
+    .summary h2, section h2 { margin: 6px 0 7px; font-size: 1.4rem; line-height: 1.2; }
+    .summary > p { margin: 0; color: var(--muted); }
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+    .kpi { border: 1px solid var(--line); border-radius: 9px; padding: 14px; background: #fafcfd; }
+    .kpi strong { display: block; font-size: 1.55rem; }
+    .kpi span { color: var(--muted); font-size: .8rem; }
+    .verdict {
+      margin-top: 17px;
+      padding: 14px 16px;
+      border-left: 4px solid #e59a18;
+      border-radius: 6px;
+      background: var(--amber-soft);
+      font-size: .92rem;
+    }
+
+    .subnav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      margin: 18px 0 28px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,.96);
+      box-shadow: 0 5px 18px rgba(19,35,49,.06);
+    }
+    .subnav a { color: var(--muted); text-decoration: none; white-space: nowrap; padding: 8px 12px; border-radius: 7px; font-size: .82rem; font-weight: 750; }
+    .subnav a:hover { color: var(--navy); background: #edf2f5; }
+
+    section { scroll-margin-top: 76px; margin-top: 30px; }
+    .section-head { justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 14px; }
+    .section-head p { margin: 0; color: var(--muted); max-width: 650px; font-size: .9rem; }
+    .category-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .category { padding: 18px; border-top: 4px solid var(--teal); }
+    .category:nth-child(2) { border-top-color: #d99013; }
+    .category:nth-child(3) { border-top-color: #c24136; }
+    .category:nth-child(4) { border-top-color: #4777bd; }
+    .category-top { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+    .category h3 { margin: 0; font-size: .96rem; }
+    .category-score { font-size: 1.45rem; font-weight: 850; }
+    .category p { min-height: 42px; margin: 9px 0 14px; color: var(--muted); font-size: .8rem; }
+    .bar { height: 7px; overflow: hidden; border-radius: 99px; background: #e9eef1; }
+    .bar span { display: block; height: 100%; border-radius: inherit; background: var(--teal); }
+    .category:nth-child(2) .bar span { background: #d99013; }
+    .category:nth-child(3) .bar span { background: #c24136; }
+    .category:nth-child(4) .bar span { background: #4777bd; }
+
+    .priority-layout { display: grid; grid-template-columns: 1.35fr .65fr; gap: 14px; }
+    .priority-list { padding: 8px 20px; }
+    .priority-item { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: start; padding: 17px 0; border-bottom: 1px solid var(--line); }
+    .priority-item:last-child { border-bottom: 0; }
+    .priority-num { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 8px; color: #fff; background: var(--red); font-weight: 850; font-size: .82rem; }
+    .priority-item:nth-child(n+4) .priority-num { background: var(--amber); }
+    .priority-item h3 { margin: 0 0 4px; font-size: .94rem; }
+    .priority-item p { margin: 0; color: var(--muted); font-size: .82rem; }
+    .impact { white-space: nowrap; font-size: .72rem; font-weight: 800; color: var(--red); }
+    .wins { padding: 20px; }
+    .wins h3 { margin: 0 0 13px; }
+    .win { display: flex; gap: 10px; margin: 12px 0; font-size: .84rem; }
+    .win i { flex: 0 0 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--green-soft); color: var(--green); font-style: normal; font-weight: 900; }
+
+    .checks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .check-group { padding: 18px; box-shadow: none; }
+    .check-group h3 { margin: 0; font-size: 1rem; }
+    .check-group > p { margin: 4px 0 13px; color: var(--muted); font-size: .78rem; }
+    .check { padding: 12px 0; border-top: 1px solid var(--line); }
+    .check-head { justify-content: space-between; gap: 12px; }
+    .check strong { font-size: .86rem; }
+    .check p { margin: 5px 0 0; color: var(--muted); font-size: .78rem; }
+
+    .extract-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .extract { padding: 20px; }
+    .extract h3 { margin: 0 0 5px; font-size: 1rem; }
+    .extract > p { margin: 0 0 15px; color: var(--muted); font-size: .82rem; }
+    .quote { margin: 0; padding: 16px; border-radius: 8px; background: #f6f8fa; border: 1px solid var(--line); font-family: Georgia, serif; font-size: 1rem; }
+    .quote.weak { border-left: 4px solid var(--red); }
+    .quote.strong { border-left: 4px solid var(--green); }
+    .quote-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+
+    .entity-map { padding: 22px; }
+    .entity-flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-items: stretch; }
+    .entity { position: relative; padding: 15px 10px; text-align: center; border: 1px solid var(--line); border-radius: 9px; background: #fafcfd; font-size: .78rem; }
+    .entity strong { display: block; margin-bottom: 4px; color: var(--navy); font-size: .86rem; }
+    .entity.missing { border-style: dashed; border-color: #d49b92; background: var(--red-soft); }
+    .entity-status { margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; }
+
+    .table-card { overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 13px 15px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: .8rem; }
+    th { color: var(--muted); background: #f8fafb; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    .page-cell { align-items: start; gap: 9px; }
+    .page-icon { flex: 0 0 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; background: var(--blue-soft); color: var(--blue); font-weight: 850; }
+    .page-cell strong { display: block; }
+    .page-cell small { color: var(--muted); }
+    .mini-score { font-weight: 850; font-size: .95rem; }
+
+    .roadmap { padding: 22px; }
+    .roadmap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+    .roadmap-step { align-items: start; gap: 12px; padding-right: 10px; }
+    .day { flex: 0 0 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--navy); text-align: center; font-size: .63rem; font-weight: 850; line-height: 1.1; }
+    .roadmap-step:nth-child(2) .day { background: var(--teal); }
+    .roadmap-step:nth-child(3) .day { background: var(--green); }
+    .roadmap-step h3 { margin: 0 0 5px; font-size: .9rem; }
+    .roadmap-step p { margin: 0; color: var(--muted); font-size: .78rem; }
+
+    .footer-note { margin-top: 24px; padding: 15px; text-align: center; color: var(--muted); font-size: .78rem; }
+
+    @media (max-width: 900px) {
+      .overview, .priority-layout { grid-template-columns: 1fr; }
+      .score-card { display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+      .score-card .eyebrow, .score-card .badge { grid-column: 1; }
+      .score-ring { grid-column: 2; grid-row: 1 / 4; }
+      .category-grid { grid-template-columns: repeat(2, 1fr); }
+      .entity-flow { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 640px) {
+      .wrap { width: min(100% - 20px, 1200px); }
+      .hero { padding-top: 20px; }
+      .title-row { align-items: start; flex-direction: column; }
+      .site-pill { width: 100%; }
+      .kpis, .category-grid, .checks, .extract-grid, .roadmap-grid { grid-template-columns: 1fr; }
+      .score-card { display: block; }
+      .priority-item { grid-template-columns: 32px 1fr; }
+      .impact { grid-column: 2; }
+      .entity-flow { grid-template-columns: 1fr 1fr; }
+      .table-card { overflow-x: auto; }
+      table { min-width: 720px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-top">
+        <div class="brand">NAUTICAL · AI VISIBILITY AUDIT</div>
+        <div class="mock-label">ILLUSTRATIVE REPORT</div>
+      </div>
+      <div class="title-row">
+        <div>
+          <h1>Detailed AI Discovery &amp; Citation Check</h1>
+          <p class="subtitle">How easily can AI search systems crawl, understand, extract, trust, and cite this website?</p>
+        </div>
+        <div class="site-pill">Audited website<strong>nauticalagency.com</strong>July 14, 2026 · 42 pages sampled</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="overview">
+      <article class="score-card">
+        <div class="eyebrow">AI discovery score</div>
+        <div class="score-ring"><div class="score-value">68<small>out of 100</small></div></div>
+        <span class="badge warn">● Needs focused improvement</span>
+      </article>
+      <article class="summary">
+        <div class="eyebrow">Executive finding</div>
+        <h2>Technically discoverable, but not yet consistently citation-ready</h2>
+        <p>The site gives search systems reliable access to most core pages and communicates its business identity well. Its largest opportunity is turning service content into self-contained, attributable answers supported by original evidence.</p>
+        <div class="kpis">
+          <div class="kpi"><strong>18/27</strong><span>AI-readiness checks passed</span></div>
+          <div class="kpi"><strong>7</strong><span>high-impact actions identified</span></div>
+          <div class="kpi"><strong>54%</strong><span>of key questions answered directly</span></div>
+        </div>
+        <div class="verdict"><strong>Central test:</strong> An AI can understand what the company offers, but many extracted passages lack the specific author, evidence, scope, and qualifiers needed to make the source the obvious citation.</div>
+      </article>
+    </div>
+
+    <nav class="subnav" aria-label="Report sections">
+      <a href="#scores">Scores</a><a href="#priorities">Priorities</a><a href="#checks">Detailed checks</a><a href="#extractability">Extractability</a><a href="#entities">Entity clarity</a><a href="#pages">Page findings</a><a href="#roadmap">Roadmap</a>
+    </nav>
+
+    <section id="scores">
+      <div class="section-head"><div><div class="eyebrow">Performance by category</div><h2>Four requirements for AI visibility</h2></div><p>The total score weights foundational access first, then the qualities that make content understandable and worth citing.</p></div>
+      <div class="category-grid">
+        <article class="card category"><div class="category-top"><h3>Access &amp; Eligibility</h3><div class="category-score">82</div></div><p>Crawling, indexing, rendering, canonicals, sitemaps, and bot access.</p><div class="bar"><span style="width:82%"></span></div></article>
+        <article class="card category"><div class="category-top"><h3>Answer Extractability</h3><div class="category-score">61</div></div><p>Clear questions, direct answers, complete passages, and rendered HTML.</p><div class="bar"><span style="width:61%"></span></div></article>
+        <article class="card category"><div class="category-top"><h3>Evidence &amp; Trust</h3><div class="category-score">54</div></div><p>Authorship, original research, methodology, dates, and attribution.</p><div class="bar"><span style="width:54%"></span></div></article>
+        <article class="card category"><div class="category-top"><h3>Entity Understanding</h3><div class="category-score">74</div></div><p>Business facts, schema, services, people, locations, and relationships.</p><div class="bar"><span style="width:74%"></span></div></article>
+      </div>
+    </section>
+
+    <section id="priorities">
+      <div class="section-head"><div><div class="eyebrow">What to fix first</div><h2>Highest-impact findings</h2></div><p>Ordered by the likely effect on AI discovery and citation, not simply by implementation effort.</p></div>
+      <div class="priority-layout">
+        <div class="card priority-list">
+          <div class="priority-item"><div class="priority-num">1</div><div><h3>Add direct answers beneath key service questions</h3><p>8 of 13 important customer questions require an AI to assemble an answer from multiple sections.</p></div><div class="impact">HIGH IMPACT</div></div>
+          <div class="priority-item"><div class="priority-num">2</div><div><h3>Publish evidence-rich case studies with methodology</h3><p>Claims mention results, but sample sizes, timeframes, baseline data, and limitations are usually absent.</p></div><div class="impact">HIGH IMPACT</div></div>
+          <div class="priority-item"><div class="priority-num">3</div><div><h3>Strengthen visible author and reviewer attribution</h3><p>Guide pages show dates, but expertise and named responsibility are not clear near important advice.</p></div><div class="impact">HIGH IMPACT</div></div>
+          <div class="priority-item"><div class="priority-num">4</div><div><h3>Define OAI-SearchBot policy explicitly</h3><p>The crawler is not blocked, but a documented policy will reduce ambiguity during future firewall changes.</p></div><div class="impact">MEDIUM</div></div>
+          <div class="priority-item"><div class="priority-num">5</div><div><h3>Connect Service, Person, and areaServed entities</h3><p>Organization schema exists, but service ownership and author relationships are incomplete.</p></div><div class="impact">MEDIUM</div></div>
+        </div>
+        <aside class="card wins">
+          <div class="eyebrow">Working well</div><h3>Signals to preserve</h3>
+          <div class="win"><i>✓</i><span>Core service pages return clean 200 responses and are indexable.</span></div>
+          <div class="win"><i>✓</i><span>Primary content is present in rendered HTML without gated interaction.</span></div>
+          <div class="win"><i>✓</i><span>Business name, phone, and core service descriptions are consistent.</span></div>
+          <div class="win"><i>✓</i><span>Organization and breadcrumb structured data match visible content.</span></div>
+          <div class="win"><i>✓</i><span>Internal links establish a recognizable local SEO topic cluster.</span></div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="checks">
+      <div class="section-head"><div><div class="eyebrow">Detailed diagnostic</div><h2>AI-readiness checks</h2></div><p>Each result explains what was observed and why it matters to retrieval, interpretation, or trust.</p></div>
+      <div class="checks">
+        <article class="check-group"><h3>1. Crawl &amp; render eligibility</h3><p>Can desired AI search crawlers reliably access the content?</p>
+          <div class="check"><div class="check-head"><strong>Googlebot and Bingbot access</strong><span class="badge pass">Pass</span></div><p>No sitewide robots.txt block detected on sampled public pages.</p></div>
+          <div class="check"><div class="check-head"><strong>OAI-SearchBot access</strong><span class="badge info">Review</span></div><p>No explicit rule found. Current default permits access, but CDN behavior should be confirmed.</p></div>
+          <div class="check"><div class="check-head"><strong>Rendered HTML availability</strong><span class="badge pass">Pass</span></div><p>Primary headings, service copy, navigation, and author text are server-visible.</p></div>
+          <div class="check"><div class="check-head"><strong>Indexing consistency</strong><span class="badge warn">Partial</span></div><p>Two location pages have canonical signals pointing to broader service pages.</p></div>
+        </article>
+        <article class="check-group"><h3>2. Answer &amp; passage quality</h3><p>Can an answer stand alone when extracted from its page?</p>
+          <div class="check"><div class="check-head"><strong>Top-of-page scope statement</strong><span class="badge pass">Pass</span></div><p>Main service pages clearly identify service, audience, and intended outcome.</p></div>
+          <div class="check"><div class="check-head"><strong>Question-first headings</strong><span class="badge warn">Partial</span></div><p>Process questions are covered, but pricing, timing, limitations, and fit are inconsistent.</p></div>
+          <div class="check"><div class="check-head"><strong>Direct answer placement</strong><span class="badge fail">Fail</span></div><p>Most answers begin with promotional framing instead of a direct one- or two-sentence response.</p></div>
+          <div class="check"><div class="check-head"><strong>Passage independence</strong><span class="badge warn">Partial</span></div><p>Several paragraphs rely on “this,” “our approach,” or preceding visual context.</p></div>
+        </article>
+        <article class="check-group"><h3>3. Evidence &amp; attribution</h3><p>Why should an AI trust and cite this source?</p>
+          <div class="check"><div class="check-head"><strong>Named author and expertise</strong><span class="badge fail">Fail</span></div><p>Blog bylines are present, but credentials and relevant experience are not connected.</p></div>
+          <div class="check"><div class="check-head"><strong>Original evidence</strong><span class="badge fail">Fail</span></div><p>Only one sampled page includes numerical first-party results with a stated timeframe.</p></div>
+          <div class="check"><div class="check-head"><strong>Publication and update dates</strong><span class="badge pass">Pass</span></div><p>Article dates are visible and consistent with Article schema.</p></div>
+          <div class="check"><div class="check-head"><strong>Methodology and limitations</strong><span class="badge fail">Fail</span></div><p>No reusable research or case-study methodology block was detected.</p></div>
+        </article>
+        <article class="check-group"><h3>4. Entity &amp; site relationships</h3><p>Are the company, people, services, and locations unambiguous?</p>
+          <div class="check"><div class="check-head"><strong>Organization identity</strong><span class="badge pass">Pass</span></div><p>Name, URL, logo, phone, and social profiles form a consistent organization entity.</p></div>
+          <div class="check"><div class="check-head"><strong>Service relationships</strong><span class="badge warn">Partial</span></div><p>Visible services are clear, but structured data does not connect them to the provider.</p></div>
+          <div class="check"><div class="check-head"><strong>Author relationship</strong><span class="badge fail">Fail</span></div><p>Person entities are not linked to the organization through worksFor.</p></div>
+          <div class="check"><div class="check-head"><strong>Local fact consistency</strong><span class="badge pass">Pass</span></div><p>Phone, service area, and business description agree across sampled site pages.</p></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="extractability">
+      <div class="section-head"><div><div class="eyebrow">Passage simulation</div><h2>What an AI can extract today</h2></div><p>This preview illustrates the difference between existing promotional copy and an answer that remains useful outside its original layout.</p></div>
+      <div class="extract-grid">
+        <article class="card extract"><h3>Current extract</h3><p>Found beneath “A strategy built around you”</p><blockquote class="quote weak">“Our proven approach helps businesses stand out, connect with more customers, and create lasting growth through solutions tailored to their needs.”</blockquote><div class="quote-meta"><span class="badge fail">Audience unclear</span><span class="badge fail">Service unnamed</span><span class="badge warn">Not attributable</span></div></article>
+        <article class="card extract"><h3>Recommended answer format</h3><p>Place beneath “Who is local SEO appropriate for?”</p><blockquote class="quote strong">“Local SEO is appropriate for businesses that serve customers in defined cities or service areas and need greater visibility in Google Maps and local search results. It is especially useful when calls, appointments, or in-person visits drive revenue.”</blockquote><div class="quote-meta"><span class="badge pass">Direct answer</span><span class="badge pass">Clear scope</span><span class="badge pass">Works out of context</span></div></article>
+      </div>
+    </section>
+
+    <section id="entities">
+      <div class="section-head"><div><div class="eyebrow">Structured understanding</div><h2>Entity relationship map</h2></div><p>Visible content and JSON-LD should tell the same story about who provides each service, where it is available, and who authored the guidance.</p></div>
+      <div class="card entity-map">
+        <div class="entity-flow">
+          <div class="entity"><strong>Organization</strong>Nautical Agency<br><span class="badge pass">Defined</span></div>
+          <div class="entity"><strong>Service</strong>Local SEO<br><span class="badge warn">Unlinked</span></div>
+          <div class="entity"><strong>Area served</strong>United States<br><span class="badge pass">Visible</span></div>
+          <div class="entity missing"><strong>Person</strong>Named expert<br><span class="badge fail">Missing</span></div>
+          <div class="entity"><strong>Article</strong>Local SEO guide<br><span class="badge warn">Partial</span></div>
+        </div>
+        <div class="entity-status"><strong>Recommended relationship:</strong> Nautical Agency <em>provides</em> Local SEO <em>available in</em> defined service areas; the Local SEO guide <em>is authored by</em> a named expert who <em>works for</em> Nautical Agency.</div>
+      </div>
+    </section>
+
+    <section id="pages">
+      <div class="section-head"><div><div class="eyebrow">Page-level review</div><h2>Content coverage &amp; citation potential</h2></div><p>Representative pages are scored on direct answers, distinct evidence, attribution, and entity clarity.</p></div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Page</th><th>Purpose</th><th>Direct answers</th><th>Evidence</th><th>Attribution</th><th>AI score</th></tr></thead>
+          <tbody>
+            <tr><td><div class="page-cell"><div class="page-icon">S</div><div><strong>Local SEO Services</strong><small>/local-seo/</small></div></div></td><td>Core service</td><td><span class="badge warn">6 of 10</span></td><td><span class="badge fail">Limited</span></td><td><span class="badge fail">Missing</span></td><td class="mini-score">62</td></tr>
+            <tr><td><div class="page-cell"><div class="page-icon">P</div><div><strong>SEO Pricing</strong><small>/seo-pricing/</small></div></div></td><td>Decision support</td><td><span class="badge pass">8 of 9</span></td><td><span class="badge warn">General</span></td><td><span class="badge warn">Company only</span></td><td class="mini-score">76</td></tr>
+            <tr><td><div class="page-cell"><div class="page-icon">C</div><div><strong>Client Growth Story</strong><small>/case-studies/home-services/</small></div></div></td><td>Proof</td><td><span class="badge pass">5 of 5</span></td><td><span class="badge pass">Original</span></td><td><span class="badge warn">Method missing</span></td><td class="mini-score">81</td></tr>
+            <tr><td><div class="page-cell"><div class="page-icon">L</div><div><strong>Detroit SEO</strong><small>/locations/detroit/</small></div></div></td><td>Location</td><td><span class="badge warn">4 of 8</span></td><td><span class="badge fail">Generic</span></td><td><span class="badge fail">Missing</span></td><td class="mini-score">48</td></tr>
+            <tr><td><div class="page-cell"><div class="page-icon">G</div><div><strong>Local SEO Guide</strong><small>/guides/local-seo/</small></div></div></td><td>Expert guide</td><td><span class="badge pass">11 of 13</span></td><td><span class="badge warn">Third-party</span></td><td><span class="badge warn">Weak bio</span></td><td class="mini-score">72</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="section-head"><div><div class="eyebrow">Recommended sequence</div><h2>90-day AI visibility roadmap</h2></div><p>Foundational access comes first, followed by answer quality and the evidence that earns citations.</p></div>
+      <div class="roadmap">
+        <div class="roadmap-grid">
+          <div class="roadmap-step"><div class="day">DAYS<br>1–30</div><div><h3>Eligibility &amp; quick clarity</h3><p>Confirm crawler access, resolve canonicals, add direct top-of-page answers, and expose author details.</p></div></div>
+          <div class="roadmap-step"><div class="day">DAYS<br>31–60</div><div><h3>Decision content &amp; entities</h3><p>Build pricing, process, comparison, and qualification content; connect Service, Person, and Organization schema.</p></div></div>
+          <div class="roadmap-step"><div class="day">DAYS<br>61–90</div><div><h3>Original proof &amp; measurement</h3><p>Publish case studies with methods, configure AI referral segments, and begin citation and brand-mention tracking.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer-note">Mock report for design and product planning. Scores and findings are illustrative and are not the result of a live crawl.</div>
+  </main>
+</body>
+</html>

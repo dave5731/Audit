@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Nautical SEO Audit V2
- * Description: Displays an interactive SEO audit dashboard and provides a WordPress REST endpoint for page checks.
- * Version: 2.0.27
+ * Plugin Name: Nautical AI & SEO Audit V2
+ * Description: Displays an interactive AI and SEO audit dashboard and provides a WordPress REST endpoint for page checks.
+ * Version: 2.0.52
  * Author: Nautical Agency
  */
 
@@ -16,9 +16,10 @@ final class Nautical_SEO_Audit_V2_Plugin
     private const REST_ROUTE = '/page-seo-checker';
     private const AJAX_ACTION = 'nautical_audit_v2_page_seo_checker';
     private const LAUNCH_ACTION = 'nautical_audit_v2_page_launch';
-    private const VERSION = '2.0.27';
-    private const DB_VERSION = '1.1.0';
+    private const VERSION = '2.0.52';
+    private const DB_VERSION = '1.4.0';
     private const DB_OPTION = 'nautical_seo_audit_v2_db_version';
+    private const AUDIT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
     public function __construct()
     {
@@ -81,7 +82,7 @@ final class Nautical_SEO_Audit_V2_Plugin
         wp_enqueue_style('nautical-seo-audit-v2');
         wp_enqueue_script('nautical-seo-audit-v2');
 
-        return '<div class="nautical-audit" data-nautical-audit-root><div class="nautical-audit-fallback">Loading SEO audit dashboard...</div></div>';
+        return '<div class="nautical-audit" data-nautical-audit-root><div class="nautical-audit-fallback">Loading AI and SEO audit dashboard...</div></div>';
     }
 
     public function registerRestRoutes(): void
@@ -96,7 +97,16 @@ final class Nautical_SEO_Audit_V2_Plugin
                 'args' => [
                     'siteUrl' => [
                         'required' => true,
-                        'sanitize_callback' => 'esc_url_raw',
+                        'sanitize_callback' => 'sanitize_text_field',
+                    ],
+                    'userName' => [
+                        'required' => true,
+                        'sanitize_callback' => 'sanitize_text_field',
+                    ],
+                    'phoneNumber' => [
+                        'required' => false,
+                        'sanitize_callback' => 'sanitize_text_field',
+                        'default' => '',
                     ],
                     'timeout' => [
                         'required' => false,
@@ -104,6 +114,11 @@ final class Nautical_SEO_Audit_V2_Plugin
                         'default' => 15,
                     ],
                     'visitorId' => [
+                        'required' => false,
+                        'sanitize_callback' => 'sanitize_text_field',
+                        'default' => '',
+                    ],
+                    'pageLaunchId' => [
                         'required' => false,
                         'sanitize_callback' => 'sanitize_text_field',
                         'default' => '',
@@ -119,7 +134,10 @@ final class Nautical_SEO_Audit_V2_Plugin
             $this->runAudit(
                 (string) $request->get_param('siteUrl'),
                 (int) $request->get_param('timeout'),
-                (string) $request->get_param('visitorId')
+                (string) $request->get_param('visitorId'),
+                (string) $request->get_param('userName'),
+                (string) $request->get_param('phoneNumber'),
+                (string) $request->get_param('pageLaunchId')
             )
         );
     }
@@ -129,7 +147,10 @@ final class Nautical_SEO_Audit_V2_Plugin
         $siteUrl = isset($_POST['siteUrl']) ? wp_unslash($_POST['siteUrl']) : '';
         $timeout = isset($_POST['timeout']) ? absint($_POST['timeout']) : 15;
         $visitorId = isset($_POST['visitorId']) ? wp_unslash($_POST['visitorId']) : '';
-        $result = $this->runAudit((string) $siteUrl, $timeout, (string) $visitorId);
+        $userName = isset($_POST['userName']) ? wp_unslash($_POST['userName']) : '';
+        $phoneNumber = isset($_POST['phoneNumber']) ? wp_unslash($_POST['phoneNumber']) : '';
+        $pageLaunchId = isset($_POST['pageLaunchId']) ? wp_unslash($_POST['pageLaunchId']) : '';
+        $result = $this->runAudit((string) $siteUrl, $timeout, (string) $visitorId, (string) $userName, (string) $phoneNumber, (string) $pageLaunchId);
 
         if (is_wp_error($result)) {
             $errorData = $result->get_error_data();
@@ -138,8 +159,8 @@ final class Nautical_SEO_Audit_V2_Plugin
                 [
                     'code' => $result->get_error_code(),
                     'message' => $result->get_error_message(),
-                ],
-                $status
+                    'httpStatus' => $status,
+                ]
             );
         }
 
@@ -149,32 +170,61 @@ final class Nautical_SEO_Audit_V2_Plugin
     public function handlePageLaunchRequest(): void
     {
         $visitorId = isset($_POST['visitorId']) ? wp_unslash($_POST['visitorId']) : '';
-        $this->recordPageLaunch((string) $visitorId);
+        $pageLaunchId = isset($_POST['pageLaunchId']) ? wp_unslash($_POST['pageLaunchId']) : '';
+        $this->ensurePageLaunch((string) $visitorId, (string) $pageLaunchId);
 
         wp_send_json_success(['recorded' => true]);
     }
 
-    private function runAudit(string $siteUrl, int $timeout, string $visitorId = '')
+    private function runAudit(string $siteUrl, int $timeout, string $visitorId = '', string $userName = '', string $phoneNumber = '', string $pageLaunchId = '')
     {
+        $submittedInput = trim(sanitize_text_field($siteUrl));
+        $userName = trim(sanitize_text_field($userName));
+        $phoneNumber = trim(sanitize_text_field($phoneNumber));
         $url = $this->normalizeUrl($siteUrl);
         $timeout = max(1, min(60, $timeout));
         $visitorId = $this->sanitizeVisitorId($visitorId);
 
+        $recordAudit = strtolower($userName) !== 'aa';
+        $phoneNumberRequired = $recordAudit;
+        if ($userName === '' || ($phoneNumberRequired && $phoneNumber === '')) {
+            return new WP_Error(
+                'nautical_audit_contact_required',
+                'Your name and phone number are required before the audit can start.',
+                ['status' => 400]
+            );
+        }
+
+        if (!$recordAudit) {
+            $this->removePageLaunch($visitorId, $pageLaunchId);
+        } else {
+            $this->ensurePageLaunch($visitorId, $pageLaunchId);
+        }
+
         if (!$url) {
+            $errorMessage = 'URL must be an http or https URL.';
+            if ($recordAudit) {
+                $this->recordAuditUrl($submittedInput, '', '', null, $errorMessage, $visitorId, $userName, $phoneNumber);
+            }
+
             return new WP_Error(
                 'nautical_audit_invalid_url',
-                'URL must be an http or https URL.',
+                $errorMessage,
                 ['status' => 400]
             );
         }
 
         $fetch = $this->fetchUrl($url, $timeout);
         if (is_wp_error($fetch)) {
-            $this->recordAuditUrl($url, '', null, $fetch->get_error_message(), $visitorId);
+            if ($recordAudit) {
+                $this->recordAuditUrl($submittedInput, $url, '', null, $fetch->get_error_message(), $visitorId, $userName, $phoneNumber);
+            }
             return $fetch;
         }
 
-        $this->recordAuditUrl($url, $fetch['final_url'], $fetch['status_code'], '', $visitorId);
+        if ($recordAudit) {
+            $this->recordAuditUrl($submittedInput, $url, $fetch['final_url'], $fetch['status_code'], '', $visitorId, $userName, $phoneNumber);
+        }
 
         $result = $this->analyzeHtml(
             $fetch['body'],
@@ -193,8 +243,8 @@ final class Nautical_SEO_Audit_V2_Plugin
     public function registerAdminMenu(): void
     {
         add_management_page(
-            'Nautical SEO Audit V2 URLs',
-            'SEO Audit V2 URLs',
+            'Nautical AI & SEO Audit V2 Inputs',
+            'AI & SEO Audit V2 Inputs',
             'manage_options',
             'nautical-seo-audit-v2-urls',
             [$this, 'renderAdminPage']
@@ -219,35 +269,35 @@ final class Nautical_SEO_Audit_V2_Plugin
             $wpdb->query("DELETE FROM {$launchTable}");
             ?>
             <div class="notice notice-success is-dismissible">
-                <p><?php echo esc_html__('The SEO audit URL log and counters have been reset.', 'nautical-seo-audit'); ?></p>
+                <p><?php echo esc_html__('The AI and SEO audit URL log and counters have been reset.', 'nautical-seo-audit'); ?></p>
             </div>
             <?php
         }
 
         $stats = $this->auditStats();
         $rows = $wpdb->get_results(
-            "SELECT requested_url, final_url, status_code, error_message, user_ip, created_at FROM {$table} ORDER BY created_at DESC, id DESC",
+            "SELECT user_name, phone_number, submitted_input, requested_url, final_url, status_code, error_message, user_ip, created_at FROM {$table} ORDER BY created_at DESC, id DESC",
             ARRAY_A
         );
 
         ?>
         <div class="wrap">
-            <h1><?php echo esc_html__('Nautical SEO Audit URLs', 'nautical-seo-audit'); ?></h1>
+            <h1><?php echo esc_html__('Nautical AI & SEO Audit Inputs', 'nautical-seo-audit'); ?></h1>
             <p style="color:#646970; margin-top:-6px;">
                 <?php echo esc_html(sprintf(__('Plugin admin version: %s', 'nautical-seo-audit'), self::VERSION)); ?>
             </p>
-            <p><?php echo esc_html__('URLs submitted through the audit dashboard are recorded here.', 'nautical-seo-audit'); ?></p>
+            <p><?php echo esc_html__('Every value submitted through the audit dashboard is recorded here, including invalid and unreachable URLs.', 'nautical-seo-audit'); ?></p>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin: 16px 0;">
                 <div style="background:#fff; border:1px solid #dcdcde; padding:16px;">
                     <div style="color:#646970; font-size:13px;"><?php echo esc_html__('People Launching Page', 'nautical-seo-audit'); ?></div>
                     <div style="font-size:28px; font-weight:600; margin-top:6px;"><?php echo esc_html(number_format_i18n($stats['people'])); ?></div>
                 </div>
                 <div style="background:#fff; border:1px solid #dcdcde; padding:16px;">
-                    <div style="color:#646970; font-size:13px;"><?php echo esc_html__('URLs Entered', 'nautical-seo-audit'); ?></div>
+                    <div style="color:#646970; font-size:13px;"><?php echo esc_html__('Inputs Submitted', 'nautical-seo-audit'); ?></div>
                     <div style="font-size:28px; font-weight:600; margin-top:6px;"><?php echo esc_html(number_format_i18n($stats['urls'])); ?></div>
                 </div>
                 <div style="background:#fff; border:1px solid #dcdcde; padding:16px;">
-                    <div style="color:#646970; font-size:13px;"><?php echo esc_html__('Average URLs Per Person', 'nautical-seo-audit'); ?></div>
+                    <div style="color:#646970; font-size:13px;"><?php echo esc_html__('Average Inputs Per Person', 'nautical-seo-audit'); ?></div>
                     <div style="font-size:28px; font-weight:600; margin-top:6px;"><?php echo esc_html(number_format_i18n($stats['average_urls_per_person'], 2)); ?></div>
                 </div>
             </div>
@@ -259,7 +309,7 @@ final class Nautical_SEO_Audit_V2_Plugin
                         <?php echo esc_html__('Export CSV', 'nautical-seo-audit'); ?>
                     </button>
                 </form>
-                <form method="post" onsubmit="return confirm('<?php echo esc_js(__('Reset the entire SEO audit URL log and counters?', 'nautical-seo-audit')); ?>');">
+                <form method="post" onsubmit="return confirm('<?php echo esc_js(__('Reset the entire AI and SEO audit URL log and counters?', 'nautical-seo-audit')); ?>');">
                     <?php wp_nonce_field('nautical_audit_reset_log', 'nautical_audit_reset_nonce'); ?>
                     <button type="submit" name="nautical_audit_reset_log" value="1" class="button button-secondary">
                         <?php echo esc_html__('Reset Log', 'nautical-seo-audit'); ?>
@@ -270,6 +320,9 @@ final class Nautical_SEO_Audit_V2_Plugin
                 <thead>
                     <tr>
                         <th><?php echo esc_html__('Date', 'nautical-seo-audit'); ?></th>
+                        <th><?php echo esc_html__('Name', 'nautical-seo-audit'); ?></th>
+                        <th><?php echo esc_html__('Phone Number', 'nautical-seo-audit'); ?></th>
+                        <th><?php echo esc_html__('Submitted Input', 'nautical-seo-audit'); ?></th>
                         <th><?php echo esc_html__('Requested URL', 'nautical-seo-audit'); ?></th>
                         <th><?php echo esc_html__('Final URL', 'nautical-seo-audit'); ?></th>
                         <th><?php echo esc_html__('Status', 'nautical-seo-audit'); ?></th>
@@ -280,16 +333,23 @@ final class Nautical_SEO_Audit_V2_Plugin
                 <tbody>
                     <?php if (!$rows) : ?>
                         <tr>
-                            <td colspan="6"><?php echo esc_html__('No audit URLs have been recorded yet.', 'nautical-seo-audit'); ?></td>
+                            <td colspan="9"><?php echo esc_html__('No audit inputs have been recorded yet.', 'nautical-seo-audit'); ?></td>
                         </tr>
                     <?php else : ?>
                         <?php foreach ($rows as $row) : ?>
                             <tr>
                                 <td><?php echo esc_html($row['created_at']); ?></td>
+                                <td><?php echo esc_html($row['user_name']); ?></td>
+                                <td><?php echo esc_html($row['phone_number']); ?></td>
+                                <td><?php echo esc_html($row['submitted_input']); ?></td>
                                 <td>
-                                    <a href="<?php echo esc_url($row['requested_url']); ?>" target="_blank" rel="noopener noreferrer">
-                                        <?php echo esc_html($row['requested_url']); ?>
-                                    </a>
+                                    <?php if (!empty($row['requested_url'])) : ?>
+                                        <a href="<?php echo esc_url($row['requested_url']); ?>" target="_blank" rel="noopener noreferrer">
+                                            <?php echo esc_html($row['requested_url']); ?>
+                                        </a>
+                                    <?php else : ?>
+                                        <?php echo esc_html__('Invalid URL', 'nautical-seo-audit'); ?>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if (!empty($row['final_url'])) : ?>
@@ -323,7 +383,7 @@ final class Nautical_SEO_Audit_V2_Plugin
         global $wpdb;
         $table = $this->tableName();
         $rows = $wpdb->get_results(
-            "SELECT created_at, requested_url, final_url, status_code, user_ip, user_agent, error_message FROM {$table} ORDER BY created_at DESC, id DESC",
+            "SELECT created_at, user_name, phone_number, submitted_input, requested_url, final_url, status_code, user_ip, user_agent, error_message FROM {$table} ORDER BY created_at DESC, id DESC",
             ARRAY_A
         );
 
@@ -342,6 +402,9 @@ final class Nautical_SEO_Audit_V2_Plugin
             $output,
             [
                 'Date',
+                'Name',
+                'Phone Number',
+                'Submitted Input',
                 'Requested URL',
                 'Final URL',
                 'Status Code',
@@ -356,6 +419,9 @@ final class Nautical_SEO_Audit_V2_Plugin
                 $output,
                 [
                     $row['created_at'],
+                    $row['user_name'],
+                    $row['phone_number'],
+                    $row['submitted_input'],
                     $row['requested_url'],
                     $row['final_url'],
                     $row['status_code'],
@@ -391,6 +457,9 @@ final class Nautical_SEO_Audit_V2_Plugin
         $sql = "CREATE TABLE {$table} (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             visitor_id varchar(64) NOT NULL DEFAULT '',
+            user_name varchar(200) NOT NULL DEFAULT '',
+            phone_number varchar(50) NOT NULL DEFAULT '',
+            submitted_input text NOT NULL,
             requested_url text NOT NULL,
             final_url text NOT NULL,
             status_code int(11) DEFAULT NULL,
@@ -409,11 +478,13 @@ final class Nautical_SEO_Audit_V2_Plugin
         $launchSql = "CREATE TABLE {$launchTable} (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             visitor_id varchar(64) NOT NULL DEFAULT '',
+            page_launch_id varchar(64) NOT NULL DEFAULT '',
             user_ip varchar(45) NOT NULL DEFAULT '',
             user_agent text NOT NULL,
             created_at datetime NOT NULL,
             PRIMARY KEY  (id),
             KEY visitor_id (visitor_id),
+            KEY page_launch_id (page_launch_id),
             KEY created_at (created_at)
         ) {$charsetCollate};";
 
@@ -421,7 +492,7 @@ final class Nautical_SEO_Audit_V2_Plugin
         update_option(self::DB_OPTION, self::DB_VERSION);
     }
 
-    private function recordAuditUrl(string $requestedUrl, string $finalUrl, ?int $statusCode, string $errorMessage, string $visitorId = ''): void
+    private function recordAuditUrl(string $submittedInput, string $requestedUrl, string $finalUrl, ?int $statusCode, string $errorMessage, string $visitorId = '', string $userName = '', string $phoneNumber = ''): void
     {
         global $wpdb;
 
@@ -433,6 +504,9 @@ final class Nautical_SEO_Audit_V2_Plugin
             $this->tableName(),
             [
                 'visitor_id' => $this->sanitizeVisitorId($visitorId),
+                'user_name' => $userName,
+                'phone_number' => $phoneNumber,
+                'submitted_input' => $submittedInput,
                 'requested_url' => $requestedUrl,
                 'final_url' => $finalUrl,
                 'status_code' => $statusCode,
@@ -441,11 +515,11 @@ final class Nautical_SEO_Audit_V2_Plugin
                 'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '',
                 'created_at' => current_time('mysql'),
             ],
-            ['%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s']
+            ['%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s']
         );
     }
 
-    private function recordPageLaunch(string $visitorId): void
+    private function recordPageLaunch(string $visitorId, string $pageLaunchId = ''): void
     {
         global $wpdb;
 
@@ -457,12 +531,66 @@ final class Nautical_SEO_Audit_V2_Plugin
             $this->launchTableName(),
             [
                 'visitor_id' => $this->sanitizeVisitorId($visitorId),
+                'page_launch_id' => $this->sanitizeVisitorId($pageLaunchId),
                 'user_ip' => $this->requestIpAddress(),
                 'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '',
                 'created_at' => current_time('mysql'),
             ],
-            ['%s', '%s', '%s', '%s']
+            ['%s', '%s', '%s', '%s', '%s']
         );
+    }
+
+    private function removePageLaunch(string $visitorId, string $pageLaunchId): void
+    {
+        global $wpdb;
+
+        if (get_option(self::DB_OPTION) !== self::DB_VERSION) {
+            $this->createTable();
+        }
+
+        $visitorId = $this->sanitizeVisitorId($visitorId);
+        $pageLaunchId = $this->sanitizeVisitorId($pageLaunchId);
+        if ($visitorId === '' || $pageLaunchId === '') {
+            return;
+        }
+
+        $launchTable = $this->launchTableName();
+        $wpdb->delete(
+            $launchTable,
+            [
+                'visitor_id' => $visitorId,
+                'page_launch_id' => $pageLaunchId,
+            ],
+            ['%s', '%s']
+        );
+    }
+
+    private function ensurePageLaunch(string $visitorId, string $pageLaunchId): void
+    {
+        global $wpdb;
+
+        if (get_option(self::DB_OPTION) !== self::DB_VERSION) {
+            $this->createTable();
+        }
+
+        $visitorId = $this->sanitizeVisitorId($visitorId);
+        $pageLaunchId = $this->sanitizeVisitorId($pageLaunchId);
+        if ($visitorId === '' || $pageLaunchId === '') {
+            return;
+        }
+
+        $launchTable = $this->launchTableName();
+        $launchExists = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT id FROM {$launchTable} WHERE visitor_id = %s AND page_launch_id = %s LIMIT 1",
+                $visitorId,
+                $pageLaunchId
+            )
+        );
+
+        if (!$launchExists) {
+            $this->recordPageLaunch($visitorId, $pageLaunchId);
+        }
     }
 
     private function auditStats(): array
@@ -543,7 +671,7 @@ final class Nautical_SEO_Audit_V2_Plugin
             [
                 'timeout' => $timeout,
                 'redirection' => 5,
-                'user-agent' => 'Mozilla/5.0 NauticalSEOAudit/1.0',
+                'user-agent' => self::AUDIT_USER_AGENT,
             ]
         );
 
@@ -557,6 +685,14 @@ final class Nautical_SEO_Audit_V2_Plugin
 
         $statusCode = (int) wp_remote_retrieve_response_code($response);
         if ($statusCode < 200 || $statusCode >= 400) {
+            if ($this->isCloudflareChallenge($response, $statusCode)) {
+                return new WP_Error(
+                    'nautical_audit_cloudflare_blocked',
+                    'Cloudflare declined the automated audit request. The website may still be online and working normally.',
+                    ['status' => 502]
+                );
+            }
+
             return new WP_Error(
                 'nautical_audit_unreachable',
                 'The URL returned HTTP ' . $statusCode . '.',
@@ -572,6 +708,30 @@ final class Nautical_SEO_Audit_V2_Plugin
         ];
     }
 
+    private function isCloudflareChallenge(array $response, int $statusCode): bool
+    {
+        $cfMitigated = strtolower((string) wp_remote_retrieve_header($response, 'cf-mitigated'));
+        $server = strtolower((string) wp_remote_retrieve_header($response, 'server'));
+        $cfRay = (string) wp_remote_retrieve_header($response, 'cf-ray');
+        $body = strtolower((string) wp_remote_retrieve_body($response));
+
+        if ($cfMitigated === 'challenge') {
+            return true;
+        }
+
+        $isCloudflareResponse = strpos($server, 'cloudflare') !== false || $cfRay !== '';
+        if ($statusCode === 403 && $isCloudflareResponse) {
+            return true;
+        }
+
+        return $statusCode === 403
+            && (
+                strpos($body, 'challenges.cloudflare.com') !== false
+                || strpos($body, 'cf-chl-') !== false
+                || strpos($body, 'cloudflare ray id') !== false
+            );
+    }
+
     private function fetchStatus(string $url, int $timeout): array
     {
         $response = wp_remote_get(
@@ -579,7 +739,7 @@ final class Nautical_SEO_Audit_V2_Plugin
             [
                 'timeout' => $timeout,
                 'redirection' => 5,
-                'user-agent' => 'Mozilla/5.0 NauticalSEOAudit/1.0',
+                'user-agent' => self::AUDIT_USER_AGENT,
             ]
         );
 
@@ -635,6 +795,8 @@ final class Nautical_SEO_Audit_V2_Plugin
 
         $noindexSources = $this->noindexSources($xpath, $headers);
         $imagesMissingAlt = $this->imagesMissingAlt($xpath, $url);
+        $faqResult = $this->homepageFaqResult($xpath);
+        $javascriptContent = $this->javascriptContentResult($xpath);
         $visibleText = $this->visibleText($dom, $xpath);
         $contact = $this->contactInfo($xpath, $visibleText, $url);
 
@@ -655,6 +817,12 @@ final class Nautical_SEO_Audit_V2_Plugin
             'contact' => $contact,
             'images_missing_alt' => $imagesMissingAlt,
             'google_analytics_present' => $this->hasGoogleAnalytics($html),
+            'ai_readiness' => [
+                'faqs_present' => $faqResult['present'],
+                'faq_source' => $faqResult['source'],
+                'javascript_content_buried' => $javascriptContent['detected'],
+                'javascript_content_detail' => $javascriptContent['detail'],
+            ],
             'values' => [
                 'title' => $title,
                 'description' => $description,
@@ -662,6 +830,85 @@ final class Nautical_SEO_Audit_V2_Plugin
                 'h1_tags' => $h1Tags,
                 'meta_description' => $metaDescription,
             ],
+        ];
+    }
+
+    private function homepageFaqResult(DOMXPath $xpath): array
+    {
+        $structuredData = $xpath->query('//script[translate(@type, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "application/ld+json"]');
+        if ($structuredData) {
+            foreach ($structuredData as $node) {
+                if (stripos((string) $node->textContent, 'FAQPage') !== false) {
+                    return ['present' => true, 'source' => 'FAQPage structured data'];
+                }
+            }
+        }
+
+        $faqHeadings = $xpath->query(
+            '//h1[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "frequently asked question") or translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "faq" or translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "faqs"]'
+            . '|//h2[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "frequently asked question") or translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "faq" or translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "faqs"]'
+            . '|//h3[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "frequently asked question") or translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "faq" or translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "faqs"]'
+        );
+        if ($faqHeadings && $faqHeadings->length > 0) {
+            return ['present' => true, 'source' => 'Visible FAQ heading'];
+        }
+
+        $questionNodes = $xpath->query('//details/summary[contains(normalize-space(.), "?")]|//*[@itemprop = "name" and contains(normalize-space(.), "?")]');
+        if ($questionNodes && $questionNodes->length >= 2) {
+            return ['present' => true, 'source' => 'Question-and-answer content'];
+        }
+
+        return ['present' => false, 'source' => 'No homepage FAQ section was found'];
+    }
+
+    private function javascriptContentResult(DOMXPath $xpath): array
+    {
+        $scriptNodes = $xpath->query('//script[not(translate(@type, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "application/ld+json")]');
+        $visibleTextNodes = $xpath->query('//body//text()[not(ancestor::script) and not(ancestor::style) and not(ancestor::noscript) and not(ancestor::template) and not(ancestor::svg)]');
+        $bodyText = '';
+        if ($visibleTextNodes) {
+            foreach ($visibleTextNodes as $node) {
+                $bodyText .= ' ' . (string) $node->nodeValue;
+            }
+        }
+        $serverText = preg_replace('/\s+/', ' ', trim(strip_tags($bodyText)));
+        $serverTextLength = strlen((string) $serverText);
+
+        $appShell = $xpath->query('//*[@id = "root" or @id = "app" or @id = "__next" or @id = "__nuxt"]')->item(0);
+        $appShellTextLength = $appShell ? strlen(trim((string) $appShell->textContent)) : 0;
+        $hasEmptyAppShell = $appShell && $appShellTextLength < 100;
+        $hasNoscriptWarning = $xpath->query('//noscript[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "enable javascript") or contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "requires javascript")]')->length > 0;
+
+        $buriedTextLength = 0;
+        if ($scriptNodes) {
+            foreach ($scriptNodes as $node) {
+                $script = (string) $node->textContent;
+                if (!preg_match_all('/["\']([^"\']{80,})["\']/', $script, $matches)) {
+                    continue;
+                }
+                foreach ($matches[1] as $candidate) {
+                    $candidate = preg_replace('/\\[nrt]|\\u[0-9a-f]{4}/i', ' ', (string) $candidate);
+                    $candidate = preg_replace('/\s+/', ' ', trim(strip_tags(html_entity_decode((string) $candidate, ENT_QUOTES | ENT_HTML5, 'UTF-8'))));
+                    if (preg_match_all('/\b[A-Za-z]{3,}\b/', (string) $candidate) >= 12 && stripos((string) $serverText, substr((string) $candidate, 0, 60)) === false) {
+                        $buriedTextLength += strlen((string) $candidate);
+                    }
+                }
+            }
+        }
+
+        $detected = ($serverTextLength < 300 && $buriedTextLength >= 300)
+            || ($serverTextLength < 300 && ($hasEmptyAppShell || $hasNoscriptWarning) && $scriptNodes && $scriptNodes->length > 0);
+
+        if (!$detected) {
+            return [
+                'detected' => false,
+                'detail' => 'No important page content was found only in JavaScript code.',
+            ];
+        }
+
+        return [
+            'detected' => true,
+            'detail' => 'The server-delivered HTML contains very little visible content while JavaScript appears responsible for loading or storing the page content.',
         ];
     }
 
