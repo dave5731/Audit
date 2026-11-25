@@ -1,5 +1,0 @@
-.standaloneaudit-browser-profile/
-audit-results/
-build/
-dist/
-*.spec
