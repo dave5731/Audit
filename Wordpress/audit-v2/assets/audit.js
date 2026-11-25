@@ -3,7 +3,6 @@
   const settings = window.NauticalAuditV2Settings || window.NauticalAuditSettings || {};
   const visitorStorageKey = "nauticalAuditV2VisitorId";
   const pageLaunchId = createVisitorId();
-  let pageLaunchRecorded = false;
 
   function createVisitorId() {
     if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -24,25 +23,6 @@
     } catch (error) {
       return createVisitorId();
     }
-  }
-
-  function postAuditAction(action, fields = {}) {
-    if (!settings.ajaxUrl || !action) {
-      return Promise.resolve(null);
-    }
-
-    const body = new FormData();
-    body.append("action", action);
-    body.append("visitorId", visitorId());
-    body.append("pageLaunchId", pageLaunchId);
-    Object.entries(fields).forEach(([key, value]) => {
-      body.append(key, value);
-    });
-
-    return fetch(settings.ajaxUrl, {
-      method: "POST",
-      body
-    });
   }
 
   function normalizeDisplayUrl(value) {
@@ -109,6 +89,7 @@
       { id: "sitemap", label: "Sitemap", status: "checking", result: "Checking", detail: "Checking for a sitemap.", delay: 3140 },
       { id: "llmsTxt", label: "llms.txt", status: "checking", result: "Checking", detail: "Checking for llms.txt.", delay: 3350 },
       { id: "homepageFaqs", label: "Homepage FAQs", status: "checking", result: "Checking", detail: "Checking for homepage FAQs.", delay: 3560 },
+      { id: "localBusinessSchema", label: "AI Structured Data", status: "checking", result: "Checking", detail: "Checking for LocalBusiness structured data.", delay: 3660 },
       { id: "javascriptContent", label: "JavaScript Content", status: "checking", result: "Checking", detail: "Checking whether important content is buried in JavaScript.", delay: 3770 },
       { id: "analytics", label: "Google Analytics", status: "checking", result: "Checking", detail: "Checking for Google Analytics or Google Tag Manager.", delay: 3980 },
       { id: "images", label: "Image Problems", status: "checking", result: "Checking", detail: "Checking image alt text.", delay: 4190, list: true, listItems: [] }
@@ -117,6 +98,7 @@
 
   function buildAuditFromResponse(result) {
     const missingImages = normalizeImageProblems(result.images_missing_alt, result.url);
+    const missingImageCount = result.images_missing_alt_count ?? missingImages.length;
     const llmsTxt = result.llms_txt || result.llmsTxt || {
       exists: false,
       error: "No llms.txt file was found at the site root"
@@ -147,9 +129,18 @@
         { id: "sitemap", label: "Sitemap", status: boolStatus(result.sitemap?.exists), result: result.sitemap?.exists ? "Found" : "Not found", detail: passOrFailDetail(result.sitemap?.exists, "A sitemap was found, helping search engines discover important pages more reliably.", "If you don't have this, Google and AI services may have trouble discovering everything on your site so it can be shown."), delay: 3140 },
         { id: "llmsTxt", label: "llms.txt", status: boolStatus(llmsTxt.exists), result: llmsTxt.exists ? "Found" : "Not found", detail: passOrFailDetail(llmsTxt.exists, "An llms.txt file was found, helping guide AI systems toward important public content.", llmsTxt.error || "No llms.txt file was found at the site root."), delay: 3350 },
         { id: "homepageFaqs", label: "Homepage FAQs", status: boolStatus(aiReadiness.faqs_present), result: aiReadiness.faqs_present ? "Found" : "Not found", detail: aiReadiness.faqs_present ? `${aiReadiness.faq_source || "Homepage FAQ content"} was found, giving AI systems clear question-and-answer content.` : "No FAQ section was found on the homepage. Add useful customer questions with direct answers and FAQPage schema where appropriate.", delay: 3560 },
+        ...(typeof aiReadiness.local_business_schema_present === "boolean" ? [{
+          id: "localBusinessSchema", label: "AI Structured Data",
+          status: boolStatus(aiReadiness.local_business_schema_present),
+          result: aiReadiness.local_business_schema_present ? "Found" : "Not found",
+          detail: aiReadiness.local_business_schema_present
+            ? "LocalBusiness structured data was found on the page."
+            : "No explicit LocalBusiness type was found in JSON-LD or microdata on the page.",
+          delay: 3660
+        }] : []),
         { id: "javascriptContent", label: "JavaScript Content", status: aiReadiness.javascript_content_buried ? "fail" : "pass", result: aiReadiness.javascript_content_buried ? "Content may be buried" : "No content found in JavaScript code", detail: aiReadiness.javascript_content_detail || "No important page content was found only in JavaScript code.", delay: 3770 },
         { id: "analytics", label: "Google Analytics", status: boolStatus(result.google_analytics_present), result: result.google_analytics_present ? "Detected" : "Not detected", detail: result.google_analytics_present ? "A Google Analytics or Google Tag Manager tracking pattern was found." : "No Google Analytics or Google Tag Manager tracking pattern was found.", delay: 3980 },
-        { id: "images", label: "Image Problems", status: missingImages.length ? "warn" : "pass", result: `${missingImages.length} images`, detail: missingImages.length ? "Without alt text on your images, Google and AI services may rank you lower. Images without usable alt text are listed below." : "No images missing alt text were found.", delay: 4190, list: true, listItems: missingImages }
+        { id: "images", label: "Image Problems", status: missingImageCount ? "warn" : "pass", result: `${missingImageCount} images`, detail: missingImageCount ? "Without alt text on your images, Google and AI services may rank you lower. Images without usable alt text are listed below." : "No images missing alt text were found.", delay: 4190, list: true, listItems: missingImages }
       ]
     };
   }
@@ -203,7 +194,7 @@
       { icon: "S", label: "Core SEO", detail: "On-page signals, indexation, images, and link authority", ...categoryScore(checks, ["title", "description", "canonical", "h1", "noindex", "images", "externalLinks", "domainAuthority", "indexation"]) },
       { icon: "T", label: "Trust Signals", detail: "Address, phone, privacy policy", ...categoryScore(checks, ["phone", "address", "privacyPolicy"]) },
       { icon: "C", label: "Technical", detail: "SSL, sitemap, noindex, analytics", ...categoryScore(checks, ["ssl", "sitemap", "analytics"]) },
-      { icon: "AI", label: "AI Readiness", detail: "FAQs, accessible content, llms.txt, and GEO signals", ...categoryScore(checks, ["llmsTxt", "homepageFaqs", "javascriptContent"]) }
+      { icon: "AI", label: "AI Readiness", detail: "FAQs, accessible content, llms.txt, and LocalBusiness schema", ...categoryScore(checks, ["llmsTxt", "homepageFaqs", "localBusinessSchema", "javascriptContent"]) }
     ];
   }
 
@@ -219,6 +210,10 @@
     const [showAnalysisAnimation, setShowAnalysisAnimation] = useState(false);
     const [auditError, setAuditError] = useState("");
     const [auditReady, setAuditReady] = useState(false);
+    const [contactToken, setContactToken] = useState("");
+    const [detailsUnlocked, setDetailsUnlocked] = useState(false);
+    const [unlockLoading, setUnlockLoading] = useState(false);
+    const [unlockError, setUnlockError] = useState("");
     const [schedulerOpen, setSchedulerOpen] = useState(false);
     const [schedulerPlacement, setSchedulerPlacement] = useState("top");
     const schedulerRef = useRef(null);
@@ -234,17 +229,10 @@
     }, [auditLoading]);
 
     useEffect(() => {
-      if (pageLaunchRecorded) return;
-      pageLaunchRecorded = true;
-      postAuditAction(settings.launchAction).catch(() => {});
-    }, []);
-
-    useEffect(() => {
-      const phoneOptional = userName.trim().toLowerCase() === "aa";
-      if (!shouldAutoRunFromQuery() || autoRunStarted.current || !initialUrl || !userName.trim() || (!phoneOptional && !phoneNumber.trim())) return;
+      if (!shouldAutoRunFromQuery() || autoRunStarted.current || !initialUrl) return;
       autoRunStarted.current = true;
-      runAudit(initialUrl, userName, phoneNumber, false);
-    }, [initialUrl, userName, phoneNumber]);
+      runAudit(initialUrl, false);
+    }, [initialUrl]);
 
     useEffect(() => {
       setCompleted({});
@@ -290,17 +278,18 @@
     );
     const overallScore = calculateScore(displayChecks);
 
-    async function runAudit(url, name, phone, updateHistory = true) {
+    async function runAudit(url, updateHistory = true) {
       const submittedInput = String(url || "").trim();
       const normalized = normalizeDisplayUrl(url);
-      const submittedName = String(name || "").trim();
-      const submittedPhone = String(phone || "").trim();
 
       setSubmittedUrl(normalized || submittedInput);
       setShowAnalysisAnimation(false);
       setAuditLoading(true);
       setAuditError("");
       setAuditReady(false);
+      setDetailsUnlocked(false);
+      setContactToken("");
+      setUnlockError("");
       setActiveAudit({ httpStatus: "n/a", imagesMissingAlt: [], checks: pendingAuditChecks() });
       setCompleted({});
       if (updateHistory && normalized) {
@@ -314,8 +303,6 @@
         }
         body.append("visitorId", visitorId());
         body.append("pageLaunchId", pageLaunchId);
-        body.append("userName", submittedName);
-        body.append("phoneNumber", submittedPhone);
         body.append("siteUrl", submittedInput);
         body.append("timeout", "30");
 
@@ -339,7 +326,12 @@
           throw requestError;
         }
 
-        setActiveAudit(buildAuditFromResponse(auditResult));
+        setContactToken(auditResult.contactToken);
+        if (auditResult.preview) {
+          const preview = buildAuditFromResponse(auditResult.preview);
+          preview.checks = preview.checks.map(check => ({ ...check, detail: "Unlock your audit to view this finding.", listItems: [] }));
+          setActiveAudit(preview);
+        }
         setAuditReady(true);
       } catch (error) {
         setAuditError({
@@ -354,7 +346,30 @@
 
     async function submitUrl(event) {
       event.preventDefault();
-      await runAudit(inputUrl, userName, phoneNumber);
+      await runAudit(inputUrl);
+    }
+
+    async function unlockAudit(event) {
+      event.preventDefault();
+      if (!userName.trim() || !phoneNumber.trim() || unlockLoading) return;
+      setUnlockLoading(true);
+      setUnlockError("");
+      try {
+        const body = new FormData();
+        body.append("action", settings.unlockAction);
+        body.append("contactToken", contactToken);
+        body.append("userName", userName.trim());
+        body.append("phoneNumber", phoneNumber.trim());
+        const response = await fetch(settings.ajaxUrl, { method: "POST", body });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.data?.message || "Unable to unlock your audit. Please try again.");
+        setActiveAudit(buildAuditFromResponse(result.data));
+        setDetailsUnlocked(true);
+      } catch (error) {
+        setUnlockError(error.message);
+      } finally {
+        setUnlockLoading(false);
+      }
     }
 
     function openScheduler(event, placement = "top") {
@@ -375,10 +390,11 @@
     }
 
     const hasLowerContent = auditLoading || auditError || auditReady || schedulerOpen;
+    const showSampleSummary = !submittedUrl && !auditLoading && !auditReady;
 
     return h(
       "main",
-      { className: `shell${hasLowerContent ? " has-lower-content" : " is-initial"}` },
+      { className: `shell${hasLowerContent ? " has-lower-content" : " is-initial"}${!submittedUrl ? " is-pre-audit" : ""}` },
       h(
         "section",
         { className: "top-band" },
@@ -395,26 +411,6 @@
               "form",
               { className: "audit-form", onSubmit: submitUrl },
               h("input", {
-                className: "audit-input audit-contact-input audit-name-input",
-                value: userName,
-                onChange: (event) => setUserName(event.target.value),
-                placeholder: "Your name",
-                "aria-label": "Your name",
-                autoComplete: "name",
-                required: true,
-                autoFocus: true
-              }),
-              h("input", {
-                className: "audit-input audit-contact-input audit-phone-input",
-                type: "tel",
-                value: phoneNumber,
-                onChange: (event) => setPhoneNumber(event.target.value),
-                placeholder: "Phone number",
-                "aria-label": "Phone number",
-                autoComplete: "tel",
-                required: userName.trim().toLowerCase() !== "aa"
-              }),
-              h("input", {
                 className: "audit-input",
                 value: inputUrl,
                 onChange: (event) => setInputUrl(event.target.value),
@@ -425,9 +421,18 @@
               h("button", { className: "audit-button", type: "submit", disabled: auditLoading }, auditLoading ? "Running..." : "Run Audit")
             )
           ),
-          auditReady
+          auditReady && detailsUnlocked
             ? h(OverallHealth, { score: overallScore })
-            : null
+            : showSampleSummary ? h("figure", { className: "audit-preview" },
+              h("div", { className: "audit-preview-label" }, "Sample audit summary"),
+              h("img", {
+                src: settings.previewImageUrl,
+                loading: "eager",
+                decoding: "async",
+                alt: "Sample AI and SEO audit dashboard with an overall health score, category performance bars, and pass and review checks."
+              }),
+              h("figcaption", null, "See your health score, category performance, and the checks that need attention. Sample results shown.")
+            ) : null
         )
       ),
       hasLowerContent
@@ -455,8 +460,24 @@
             : null,
           auditReady
             ? h(
-              wp.element.Fragment,
-              null,
+              "div",
+              { className: `audit-results-stage${detailsUnlocked ? "" : " is-locked"}` },
+              !detailsUnlocked ? wp.element.createPortal(h("div", { className: "nautical-audit audit-contact-overlay" },
+                h("form", { className: "audit-contact-gate", onSubmit: unlockAudit },
+                h("h2", null, "Your audit is ready"),
+                h("p", null, "Enter your name and phone number to view your full audit results."),
+                h("label", null, "Your name", h("input", {
+                  className: "audit-input", value: userName, autoComplete: "name", required: true, autoFocus: true,
+                  onChange: (event) => setUserName(event.target.value)
+                })),
+                h("label", null, "Phone number", h("input", {
+                  className: "audit-input", type: "tel", value: phoneNumber, autoComplete: "tel", required: true,
+                  onChange: (event) => setPhoneNumber(event.target.value)
+                })),
+                h("button", { className: "audit-button", type: "submit", disabled: unlockLoading }, unlockLoading ? "Opening your audit..." : "View my audit"),
+                unlockError ? h("p", { role: "alert" }, unlockError) : null
+              )), document.body) : null,
+              h("div", { className: "audit-results-details", inert: detailsUnlocked ? undefined : "", "aria-hidden": detailsUnlocked ? undefined : true },
               h(
                 "section",
                 { className: "dashboard" },
@@ -479,6 +500,7 @@
                 onSchedule: (event) => openScheduler(event, "bottom"),
                 scheduler: schedulerOpen && schedulerPlacement === "bottom" ? renderScheduler() : null
               })
+              )
             )
             : auditLoading
               ? null

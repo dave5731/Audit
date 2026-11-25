@@ -1527,3 +1527,106 @@
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
 }
+
+.nautical-audit .shell.is-pre-audit .top-inner.hero {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 42px;
+}
+
+.nautical-audit .shell.is-pre-audit h1 {
+  font-size: clamp(2rem, 3.5vw, 3.6rem);
+}
+
+.nautical-audit .shell.is-pre-audit .audit-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nautical-audit .shell.is-pre-audit .audit-input {
+  width: 100%;
+  min-width: 0;
+  height: 54px;
+}
+
+.nautical-audit .audit-preview { margin: 0; min-width: 0; grid-column: 2; width: 100%; }
+.nautical-audit .audit-preview-label {
+  margin-bottom: 14px;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.nautical-audit .audit-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(3, 25, 40, 0.3);
+}
+.nautical-audit .audit-preview figcaption {
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .nautical-audit .shell.is-pre-audit .top-inner.hero { grid-template-columns: 1fr; }
+  .nautical-audit .audit-preview { grid-column: 1; width: min(600px, 100%); margin: 0 auto; }
+}
+
+@media (max-width: 480px) {
+  .nautical-audit .shell.is-pre-audit .audit-form { grid-template-columns: 1fr; }
+}
+
+.nautical-audit .audit-form { grid-template-columns: minmax(0, 1fr) auto; }
+.nautical-audit .audit-results-stage { position: relative; }
+.nautical-audit .audit-results-stage.is-locked { min-height: 620px; }
+.nautical-audit .is-locked .audit-results-details {
+  filter: blur(5px);
+  opacity: 0.48;
+  pointer-events: none;
+  user-select: none;
+  max-height: 760px;
+  overflow: hidden;
+}
+.nautical-audit.audit-contact-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: grid;
+  align-items: safe center;
+  justify-items: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background: rgba(11, 37, 69, 0.2);
+}
+.nautical-audit .audit-contact-gate {
+  position: relative;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+  width: min(480px, 100%);
+  padding: 30px;
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(11, 37, 69, 0.22);
+}
+.nautical-audit .audit-contact-gate h2 { margin: 0; color: var(--accent); }
+.nautical-audit .audit-contact-gate p { margin: 0; color: var(--muted); }
+.nautical-audit .audit-contact-gate label { display: grid; gap: 6px; font-weight: 650; }
+.nautical-audit .audit-contact-gate .audit-input { width: 100%; border-color: var(--line); box-shadow: none; }
+.nautical-audit .audit-contact-gate .audit-input:focus { outline: 2px solid var(--teal); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .nautical-audit .audit-form { grid-template-columns: 1fr; }
+  .nautical-audit .audit-contact-gate { padding: 22px; }
+}
+@media print {
+  .nautical-audit.audit-contact-overlay { display: none; }
+  .nautical-audit .audit-results-stage.is-locked { display: none; }
+}

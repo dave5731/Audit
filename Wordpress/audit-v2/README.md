@@ -18,7 +18,11 @@ The shortcode renders the interactive audit dashboard. The dashboard calls this 
 /wp-json/nautical-audit-v2/v1/page-seo-checker
 ```
 
-The endpoint accepts a `POST` request with required `userName`, `phoneNumber`, and `siteUrl` form fields, plus an optional `timeout` field.
+The endpoint accepts a `POST` request with a required `siteUrl` and optional `timeout`. The audit runs before contact details are requested. Completed reports are cached on the server for one hour; the response contains an unlock token. The dashboard shows an obscured report preview behind a contact form. Both name and phone number are required to unlock the full report through the `nautical_audit_v2_unlock` AJAX action. Unlocking updates the existing audit log entry without rerunning the audit.
+
+Submitting `aa` as the name (ignoring case and surrounding spaces) unlocks the report while removing its preliminary audit log entry and the current page launch from the People Launching Page count. Earlier page launches remain counted. Neither the name nor phone number is saved for that audit.
+
+As of 2.0.64, People Launching Page counts visitors only after a successful contact submission with a name other than `aa`. Opening the page or starting an audit does not increment the count. The legacy page-launch endpoint also defers counting, including requests from cached pages. Existing historical launch counts remain unchanged.
 
 ## Query Parameters
 
@@ -43,6 +47,8 @@ Tools > AI & SEO Audit V2 Inputs
 The admin page shows the user's name and phone number, the original submitted input, and the normalized requested URL. It includes counters for people launching the page, inputs entered, and average inputs entered per person. It also includes a nonce-protected **Export CSV** button to download the log and a nonce-protected **Reset Log** button to clear all recorded audit inputs and counters.
 
 ## Building the installable ZIP
+
+The stylesheet URL includes the plugin version and a hash of the CSS contents. Returning visitors fetch the updated stylesheet on the next page load after an update. Purge any WordPress page cache or CDN HTML cache after installing an update so cached pages reference the new stylesheet URL.
 
 From the repository's `Wordpress` directory, run:
 

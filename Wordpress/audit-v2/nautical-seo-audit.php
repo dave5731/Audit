@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Nautical AI & SEO Audit V2
  * Description: Displays an interactive AI and SEO audit dashboard and provides a WordPress REST endpoint for page checks.
- * Version: 2.0.52
+ * Version: 2.0.67
  * Author: Nautical Agency
  */
 
@@ -16,7 +16,7 @@ final class Nautical_SEO_Audit_V2_Plugin
     private const REST_ROUTE = '/page-seo-checker';
     private const AJAX_ACTION = 'nautical_audit_v2_page_seo_checker';
     private const LAUNCH_ACTION = 'nautical_audit_v2_page_launch';
-    private const VERSION = '2.0.52';
+    private const VERSION = '2.0.67';
     private const DB_VERSION = '1.4.0';
     private const DB_OPTION = 'nautical_seo_audit_v2_db_version';
     private const AUDIT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
@@ -34,6 +34,8 @@ final class Nautical_SEO_Audit_V2_Plugin
         add_action('wp_ajax_nopriv_' . self::AJAX_ACTION, [$this, 'handleAjaxAuditRequest']);
         add_action('wp_ajax_' . self::LAUNCH_ACTION, [$this, 'handlePageLaunchRequest']);
         add_action('wp_ajax_nopriv_' . self::LAUNCH_ACTION, [$this, 'handlePageLaunchRequest']);
+        add_action('wp_ajax_nautical_audit_v2_unlock', [$this, 'handleUnlockRequest']);
+        add_action('wp_ajax_nopriv_nautical_audit_v2_unlock', [$this, 'handleUnlockRequest']);
     }
 
     public static function activate(): void
@@ -45,12 +47,14 @@ final class Nautical_SEO_Audit_V2_Plugin
     public function registerAssets(): void
     {
         $baseUrl = plugin_dir_url(__FILE__);
+        // Change the stylesheet URL whenever its contents change.
+        $styleVersion = self::VERSION . '-' . substr(hash_file('sha256', __DIR__ . '/assets/audit.css'), 0, 12);
 
         wp_register_style(
             'nautical-seo-audit-v2',
             $baseUrl . 'assets/audit.css',
             [],
-            self::VERSION
+            $styleVersion
         );
 
         wp_register_script(
@@ -69,6 +73,8 @@ final class Nautical_SEO_Audit_V2_Plugin
                 'ajaxUrl' => esc_url_raw(admin_url('admin-ajax.php')),
                 'ajaxAction' => self::AJAX_ACTION,
                 'launchAction' => self::LAUNCH_ACTION,
+                'unlockAction' => 'nautical_audit_v2_unlock',
+                'previewImageUrl' => esc_url_raw($baseUrl . 'assets/audit-preview.png?ver=' . self::VERSION),
                 'nonce' => is_user_logged_in() ? wp_create_nonce('wp_rest') : '',
             ]
         );
@@ -100,7 +106,7 @@ final class Nautical_SEO_Audit_V2_Plugin
                         'sanitize_callback' => 'sanitize_text_field',
                     ],
                     'userName' => [
-                        'required' => true,
+                        'required' => false,
                         'sanitize_callback' => 'sanitize_text_field',
                     ],
                     'phoneNumber' => [
@@ -169,11 +175,8 @@ final class Nautical_SEO_Audit_V2_Plugin
 
     public function handlePageLaunchRequest(): void
     {
-        $visitorId = isset($_POST['visitorId']) ? wp_unslash($_POST['visitorId']) : '';
-        $pageLaunchId = isset($_POST['pageLaunchId']) ? wp_unslash($_POST['pageLaunchId']) : '';
-        $this->ensurePageLaunch((string) $visitorId, (string) $pageLaunchId);
-
-        wp_send_json_success(['recorded' => true]);
+        // Older cached clients may still call this endpoint before a name is known.
+        wp_send_json_success(['recorded' => false, 'deferred' => true]);
     }
 
     private function runAudit(string $siteUrl, int $timeout, string $visitorId = '', string $userName = '', string $phoneNumber = '', string $pageLaunchId = '')
@@ -186,19 +189,9 @@ final class Nautical_SEO_Audit_V2_Plugin
         $visitorId = $this->sanitizeVisitorId($visitorId);
 
         $recordAudit = strtolower($userName) !== 'aa';
-        $phoneNumberRequired = $recordAudit;
-        if ($userName === '' || ($phoneNumberRequired && $phoneNumber === '')) {
-            return new WP_Error(
-                'nautical_audit_contact_required',
-                'Your name and phone number are required before the audit can start.',
-                ['status' => 400]
-            );
-        }
 
         if (!$recordAudit) {
             $this->removePageLaunch($visitorId, $pageLaunchId);
-        } else {
-            $this->ensurePageLaunch($visitorId, $pageLaunchId);
         }
 
         if (!$url) {
@@ -222,10 +215,6 @@ final class Nautical_SEO_Audit_V2_Plugin
             return $fetch;
         }
 
-        if ($recordAudit) {
-            $this->recordAuditUrl($submittedInput, $url, $fetch['final_url'], $fetch['status_code'], '', $visitorId, $userName, $phoneNumber);
-        }
-
         $result = $this->analyzeHtml(
             $fetch['body'],
             $fetch['headers'],
@@ -237,7 +226,86 @@ final class Nautical_SEO_Audit_V2_Plugin
         $result['sitemap'] = $this->checkSitemap($url, $timeout);
         $result['llms_txt'] = $this->checkLlmsTxt($url, $timeout);
 
-        return $result;
+        $auditId = $this->recordAuditUrl($submittedInput, $url, $fetch['final_url'], $fetch['status_code'], '', $visitorId);
+        $token = wp_generate_password(40, false, false);
+        $stored = set_transient('nautical_audit_unlock_' . hash('sha256', $token), [
+            'result' => $result,
+            'audit_id' => $auditId,
+            'submitted_input' => $submittedInput,
+            'requested_url' => $url,
+            'final_url' => $fetch['final_url'],
+            'status_code' => $fetch['status_code'],
+            'visitor_id' => $visitorId,
+            'page_launch_id' => $this->sanitizeVisitorId($pageLaunchId),
+        ], HOUR_IN_SECONDS);
+        if (!$stored) {
+            return new WP_Error('nautical_audit_storage_failed', 'Unable to save this audit. Please try again.', ['status' => 500]);
+        }
+
+        // Only summary signals leave the server before contact submission.
+        $preview = [
+            'url' => $result['url'] ?? $url,
+            'checks' => array_map('boolval', $result['checks'] ?? []),
+            'noindex' => ['is_noindex' => !empty($result['noindex']['is_noindex'])],
+            'google_analytics_present' => !empty($result['google_analytics_present']),
+            'images_missing_alt_count' => count($result['images_missing_alt'] ?? []),
+            'ai_readiness' => [
+                'faqs_present' => !empty($result['ai_readiness']['faqs_present']),
+                'local_business_schema_present' => !empty($result['ai_readiness']['local_business_schema_present']),
+                'javascript_content_buried' => !empty($result['ai_readiness']['javascript_content_buried']),
+            ],
+        ];
+        foreach (['ssl' => 'has_ssl', 'sitemap' => 'exists', 'llms_txt' => 'exists'] as $section => $flag) {
+            $preview[$section] = [$flag => !empty($result[$section][$flag])];
+        }
+        foreach (['phone', 'address', 'privacy_policy'] as $section) {
+            $preview['contact'][$section] = ['exists' => !empty($result['contact'][$section]['exists'])];
+        }
+        return ['locked' => true, 'contactToken' => $token, 'preview' => $preview];
+    }
+
+    public function handleUnlockRequest(): void
+    {
+        $name = trim(sanitize_text_field(wp_unslash($_POST['userName'] ?? '')));
+        $phone = trim(sanitize_text_field(wp_unslash($_POST['phoneNumber'] ?? '')));
+        $token = sanitize_text_field(wp_unslash($_POST['contactToken'] ?? ''));
+        if ($name === '' || $phone === '') {
+            wp_send_json_error(['message' => 'Enter your name and phone number to view your audit.']);
+        }
+        $key = 'nautical_audit_unlock_' . hash('sha256', $token);
+        $audit = get_transient($key);
+        if (!is_array($audit)) {
+            wp_send_json_error(['message' => 'This audit has expired. Please run the audit again.']);
+        }
+        global $wpdb;
+        if (strtolower($name) === 'aa') {
+            if (!$this->removePageLaunch($audit['visitor_id'], $audit['page_launch_id'] ?? '')) {
+                wp_send_json_error(['message' => 'Unable to exclude this page launch from the count. Please try again.']);
+            }
+            // Audits are logged before the contact gate; discard this test audit.
+            if (!empty($audit['audit_id']) && $wpdb->delete(
+                $this->tableName(), ['id' => $audit['audit_id']], ['%d']
+            ) === false) {
+                wp_send_json_error(['message' => 'Unable to exclude this audit from the log. Please try again.']);
+            }
+            delete_transient($key);
+            wp_send_json_success($audit['result']);
+            return;
+        }
+        if (empty($audit['audit_id'])) {
+            $saved = $this->recordAuditUrl($audit['submitted_input'], $audit['requested_url'], $audit['final_url'],
+                $audit['status_code'], '', $audit['visitor_id'], $name, $phone);
+        } else {
+            $saved = $wpdb->update($this->tableName(), ['user_name' => $name, 'phone_number' => $phone],
+                ['id' => $audit['audit_id']], ['%s', '%s'], ['%d']);
+        }
+        if ($saved === false || (empty($audit['audit_id']) && !$saved)) {
+            wp_send_json_error(['message' => 'Unable to save your details. Please try again.']);
+        }
+        // Only count a visitor after the contact name is known to be non-test.
+        $this->ensurePageLaunch($audit['visitor_id'], $audit['page_launch_id'] ?? '');
+        delete_transient($key);
+        wp_send_json_success($audit['result']);
     }
 
     public function registerAdminMenu(): void
@@ -492,7 +560,7 @@ final class Nautical_SEO_Audit_V2_Plugin
         update_option(self::DB_OPTION, self::DB_VERSION);
     }
 
-    private function recordAuditUrl(string $submittedInput, string $requestedUrl, string $finalUrl, ?int $statusCode, string $errorMessage, string $visitorId = '', string $userName = '', string $phoneNumber = ''): void
+    private function recordAuditUrl(string $submittedInput, string $requestedUrl, string $finalUrl, ?int $statusCode, string $errorMessage, string $visitorId = '', string $userName = '', string $phoneNumber = ''): int
     {
         global $wpdb;
 
@@ -517,6 +585,7 @@ final class Nautical_SEO_Audit_V2_Plugin
             ],
             ['%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s']
         );
+        return (int) $wpdb->insert_id;
     }
 
     private function recordPageLaunch(string $visitorId, string $pageLaunchId = ''): void
@@ -540,7 +609,7 @@ final class Nautical_SEO_Audit_V2_Plugin
         );
     }
 
-    private function removePageLaunch(string $visitorId, string $pageLaunchId): void
+    private function removePageLaunch(string $visitorId, string $pageLaunchId): bool
     {
         global $wpdb;
 
@@ -551,18 +620,18 @@ final class Nautical_SEO_Audit_V2_Plugin
         $visitorId = $this->sanitizeVisitorId($visitorId);
         $pageLaunchId = $this->sanitizeVisitorId($pageLaunchId);
         if ($visitorId === '' || $pageLaunchId === '') {
-            return;
+            return true;
         }
 
         $launchTable = $this->launchTableName();
-        $wpdb->delete(
+        return $wpdb->delete(
             $launchTable,
             [
                 'visitor_id' => $visitorId,
                 'page_launch_id' => $pageLaunchId,
             ],
             ['%s', '%s']
-        );
+        ) !== false;
     }
 
     private function ensurePageLaunch(string $visitorId, string $pageLaunchId): void
@@ -797,6 +866,8 @@ final class Nautical_SEO_Audit_V2_Plugin
         $imagesMissingAlt = $this->imagesMissingAlt($xpath, $url);
         $faqResult = $this->homepageFaqResult($xpath);
         $javascriptContent = $this->javascriptContentResult($xpath);
+        // Read JSON-LD before visibleText removes script elements from the DOM.
+        $localBusinessSchema = $this->hasLocalBusinessSchema($xpath);
         $visibleText = $this->visibleText($dom, $xpath);
         $contact = $this->contactInfo($xpath, $visibleText, $url);
 
@@ -820,6 +891,7 @@ final class Nautical_SEO_Audit_V2_Plugin
             'ai_readiness' => [
                 'faqs_present' => $faqResult['present'],
                 'faq_source' => $faqResult['source'],
+                'local_business_schema_present' => $localBusinessSchema,
                 'javascript_content_buried' => $javascriptContent['detected'],
                 'javascript_content_detail' => $javascriptContent['detail'],
             ],
@@ -859,6 +931,43 @@ final class Nautical_SEO_Audit_V2_Plugin
         }
 
         return ['present' => false, 'source' => 'No homepage FAQ section was found'];
+    }
+
+    private function hasLocalBusinessSchema(DOMXPath $xpath): bool
+    {
+        $scripts = $xpath->query('//script[translate(normalize-space(@type), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz") = "application/ld+json"]');
+        foreach ($scripts as $script) {
+            if ($this->jsonLdHasLocalBusiness(json_decode($script->textContent))) {
+                return true;
+            }
+        }
+
+        return $xpath->query(
+            '//*[@itemscope and (contains(concat(" ", normalize-space(@itemtype), " "), " https://schema.org/LocalBusiness ")'
+            . ' or contains(concat(" ", normalize-space(@itemtype), " "), " http://schema.org/LocalBusiness "))]'
+        )->length > 0;
+    }
+
+    private function jsonLdHasLocalBusiness($node): bool
+    {
+        if (!is_array($node) && !is_object($node)) {
+            return false;
+        }
+
+        if (is_object($node)) {
+            foreach ((array) ($node->{'@type'} ?? []) as $type) {
+                if (in_array($type, ['LocalBusiness', 'https://schema.org/LocalBusiness', 'http://schema.org/LocalBusiness'], true)) {
+                    return true;
+                }
+            }
+        }
+
+        foreach ($node as $property => $value) {
+            if ($property !== '@context' && $this->jsonLdHasLocalBusiness($value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function javascriptContentResult(DOMXPath $xpath): array
